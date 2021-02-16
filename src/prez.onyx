@@ -1,7 +1,8 @@
 use package core
+use package event as event
 
 Canvas :: struct {
-    Handle :: #type u32;
+    Handle :: #type u32
 
     init  :: (id: str) -> Handle #foreign "canvas" "init" ---
     clear :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> Handle #foreign "canvas" "clear" ---
@@ -12,8 +13,9 @@ Canvas :: struct {
     set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
 
     TextMetrics :: struct {
-        width : f32;
-        box   : struct {
+        width: f32;
+
+        box: struct {
             left, right : f32;
             top, bottom : f32;
         };
@@ -49,15 +51,28 @@ draw_centered_text :: (text: str, y_baseline: f32) {
 
     font_metrics: TextMetrics;
     measure_text(canvas, text, ^font_metrics);
-    println(font_metrics.width);
 
     x := (width - font_metrics.width) / 2;
 
     fill_text(canvas, text, x, y_baseline);
 }
 
+poll_events :: () {
+    use event.DomEventKind;
+
+    ev: event.Event;
+    while event.poll(^ev) do switch ev.kind {
+        case Resize {
+            printf("New window size: %i, %i", ev.resize.width, ev.resize.height);
+        }
+    }
+}
+
 main :: (args: [] cstr) {
     setup_canvas();
+    event.init();
 
     draw_centered_text("Hello, World! This is a long title!", 100);
+
+    poll_events();
 }

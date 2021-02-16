@@ -5,6 +5,66 @@ let canvasCtx;
 
 const MAGIC_CANVAS_NUMBER = 0x5052455A;
 
+function push_event_to_buffer(esp, event_size, event_kind, data) {
+    let WASM_U32 = new Uint32Array(wasm_instance.exports.memory.buffer);
+
+    if (WASM_U32[esp] >= WASM_U32[esp + 1]) {
+        console.log("Buffer full!");
+        return;
+    }
+
+    WASM_U32[esp] += 1;
+
+    let event_idx = esp + (WASM_U32[esp] - 1) * (event_size / 4) + 2;
+    WASM_U32[event_idx] = event_kind;
+    WASM_U32[event_idx + 1] = Date.now();
+
+    for (let i = 0; i < data.length; i++) {
+        WASM_U32[event_idx + 2 + i] = data[i];
+    }
+}
+
+
+let event_import_obj = {
+    setup(esp, event_size) {
+        // Indicies into a Uint32Array are not based on bytes,
+        // but on the index.
+        esp /= 4;
+
+        document.addEventListener("keydown", (ev) => {
+            if (ev.isComposing || ev.keyCode === 229) return;
+            push_event_to_buffer(esp, event_size, 0x04, [ ev.keyCode ]);
+        });
+
+        document.addEventListener("keyup", (ev) => {
+            if (ev.isComposing || ev.keyCode === 229) return;
+            push_event_to_buffer(esp, event_size, 0x05, [ ev.keyCode ]);
+        });
+
+        document.addEventListener("mousedown", (ev) => {
+            push_event_to_buffer(esp, event_size, 0x01, [ ev.clientX, ev.clientY, ev.button ]);
+        });
+
+        document.addEventListener("mouseup", (ev) => {
+            push_event_to_buffer(esp, event_size, 0x02, [ ev.clientX, ev.clientY, ev.button ]);
+        });
+
+        document.addEventListener("mousemove", (ev) => {
+            push_event_to_buffer(esp, event_size, 0x03, [ ev.clientX, ev.clientY, -1 ]);
+        });
+
+        document.addEventListener("wheel", (ev) => {
+            push_event_to_buffer(esp, event_size, 0x07, [ ev.clientX, ev.clientY, ev.deltaY >= 0 ? 0x04 : 0x03 ]);
+        });
+
+        window.addEventListener("resize", (ev) => {
+            push_event_to_buffer(esp, event_size, 0x06, [ window.innerWidth, window.innerHeight ]);
+        });
+
+        push_event_to_buffer(esp, event_size, 0x06, [ window.innerWidth, window.innerHeight ]);
+    }
+}
+
 let canvas_import_obj = {
 
     init(canvas_name, length) {
@@ -42,7 +102,6 @@ let canvas_import_obj = {
         const text = new TextDecoder().decode(data);
 
         let metrics = canvasCtx.measureText(text);
-        console.log("TEST:", metrics);
 
         let data_view = new DataView(wasm_instance.exports.memory.buffer, measure_ptr, 5 * 4);
         data_view.setFloat32(0,  metrics.width, true);
@@ -79,7 +138,8 @@ let import_obj = {
         exit(status) { console.warn("Attempted to call host.exit()."); }
     },
 
-    canvas: canvas_import_obj
+    canvas: canvas_import_obj,
+    event:  event_import_obj,
 }
 
 function main() {
