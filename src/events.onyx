@@ -1,8 +1,3 @@
-// This is a simple buffered system to receive events from the webbrowser
-// in a buffer that you can poll and consume all of the events. It is not
-// direclty used by the immediate mode graphics, but it makes standing up
-// a simple application much easier.
-
 package event
 
 #private_file Num_Buffered_Events :: 16

@@ -10,15 +10,18 @@ Canvas :: struct {
     get_width  :: (handle: Handle) -> u32 #foreign "canvas" "get_width" ---
     get_height :: (handle: Handle) -> u32 #foreign "canvas" "get_height" ---
 
+    set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "set_size" ---
+
     set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
 
     TextMetrics :: struct {
-        width: f32;
+        width : f32;
+        box   : Box;
 
-        box: struct {
+        Box :: struct {
             left, right : f32;
             top, bottom : f32;
-        };
+        }
     }
 
     measure_text :: (handle: Handle, text: str, measurements: ^TextMetrics) -> void #foreign "canvas" "measureText" ---
@@ -57,14 +60,42 @@ draw_centered_text :: (text: str, y_baseline: f32) {
     fill_text(canvas, text, x, y_baseline);
 }
 
+dirty_display := true
+
 poll_events :: () {
-    use event.DomEventKind;
+    use event.DomEventKind
 
     ev: event.Event;
     while event.poll(^ev) do switch ev.kind {
         case Resize {
-            printf("New window size: %i, %i", ev.resize.width, ev.resize.height);
+            printf("New window size: %i, %i\n", ev.resize.width, ev.resize.height);
+            dirty_display = true;
+
+            use Canvas;
+            set_size(canvas, ev.resize.width, ev.resize.height);
         }
+
+        case MouseDown {
+            printf("Mouse down: %i, %i\n", ev.mouse.pos_x, ev.mouse.pos_y);
+
+            use Canvas
+            fill_rect(canvas, ~~ ev.mouse.pos_x, ~~ ev.mouse.pos_y, 32, 32, 1, 0, 0);
+        }
+    }
+}
+
+loop :: () -> void #export "loop" {
+    poll_events();
+
+    if dirty_display {
+        dirty_display = false;
+
+        Canvas.clear(canvas, 0.1, 0.1, 0.1);
+        Canvas.set_font(canvas, "bold 72px Arial");
+        draw_centered_text("Hello, World! This is a long title!", 100);
+
+        Canvas.set_font(canvas, "bold 48px Arial");
+        draw_centered_text("This is some more text.", 170);
     }
 }
 
@@ -72,7 +103,6 @@ main :: (args: [] cstr) {
     setup_canvas();
     event.init();
 
-    draw_centered_text("Hello, World! This is a long title!", 100);
-
-    poll_events();
+    start_loop :: () -> void #foreign "host" "start_loop" ---
+    start_loop();
 }

@@ -90,6 +90,11 @@ let canvas_import_obj = {
     get_width(canvas)  { return canvasElem.width;  },
     get_height(canvas) { return canvasElem.height; },
 
+    set_size(canvas, width, height) {
+        canvasElem.width = width;
+        canvasElem.height = height;
+    },
+
     setFont(canvas, font_name, font_length) {
         const data = new Uint8Array(wasm_instance.exports.memory.buffer, font_name, font_length);
         const str  = new TextDecoder().decode(data);
@@ -135,7 +140,16 @@ let import_obj = {
             console.log(str);
         },
 
-        exit(status) { console.warn("Attempted to call host.exit()."); }
+        exit(status) { console.warn("Attempted to call host.exit()."); },
+
+        start_loop() {
+            let loop = () => {
+                wasm_instance.exports.loop();
+                window.requestAnimationFrame(loop);
+            };
+
+            window.requestAnimationFrame(loop);
+        },
     },
 
     canvas: canvas_import_obj,
