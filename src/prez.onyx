@@ -1,4 +1,3 @@
-
 use package core
 
 Canvas :: struct {
@@ -6,8 +5,22 @@ Canvas :: struct {
 
     init  :: (id: str) -> Handle #foreign "canvas" "init" ---
     clear :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> Handle #foreign "canvas" "clear" ---
+
     get_width  :: (handle: Handle) -> u32 #foreign "canvas" "get_width" ---
     get_height :: (handle: Handle) -> u32 #foreign "canvas" "get_height" ---
+
+    set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
+
+    TextMetrics :: struct {
+        width : f32;
+        box   : struct {
+            left, right : f32;
+            top, bottom : f32;
+        };
+    }
+
+    measure_text :: (handle: Handle, text: str, measurements: ^TextMetrics) -> void #foreign "canvas" "measureText" ---
+
     fill_rect :: (handle: Handle,
         x: f32, y: f32, w: f32, h: f32,
         r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "fillRect" ---
@@ -15,23 +28,36 @@ Canvas :: struct {
     fill_text :: (handle: Handle, text: str, x: f32, y: f32, max_width: f32 = -1.0f) -> void #foreign "canvas" "fillText" ---
 }
 
-setup_canvas :: () {
-    use Canvas;
+// :GlobalVariable
+canvas: Canvas.Handle
 
-    canvas := init("prez_canvas");
-    if canvas == -1 {
-        println("Failed to set up canvas.");
-        return;
-    }
+setup_canvas :: () {
+    use Canvas
+
+    canvas = init("prez_canvas");
+    assert(canvas != -1, "Failed to set up canvas.");
 
     clear(canvas, 0.1, 0.1, 0.1);
 
-    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
-    fill_rect(canvas, width / 2, height / 2, width / 2, height / 2, 1, 0, 0);
+    set_font(canvas, "bold 72px Arial");
+}
 
-    fill_text(canvas, "Hello, World!!", width / 2, height / 2);
+draw_centered_text :: (text: str, y_baseline: f32) {
+    use Canvas
+
+    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+
+    font_metrics: TextMetrics;
+    measure_text(canvas, text, ^font_metrics);
+    println(font_metrics.width);
+
+    x := (width - font_metrics.width) / 2;
+
+    fill_text(canvas, text, x, y_baseline);
 }
 
 main :: (args: [] cstr) {
     setup_canvas();
+
+    draw_centered_text("Hello, World! This is a long title!", 100);
 }

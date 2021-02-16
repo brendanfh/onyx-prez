@@ -29,6 +29,28 @@ let canvas_import_obj = {
 
     get_width(canvas)  { return canvasElem.width;  },
     get_height(canvas) { return canvasElem.height; },
+
+    setFont(canvas, font_name, font_length) {
+        const data = new Uint8Array(wasm_instance.exports.memory.buffer, font_name, font_length);
+        const str  = new TextDecoder().decode(data);
+
+        canvasCtx.font = str;
+    },
+
+    measureText(canvas, text_ptr, text_len, measure_ptr) {
+        const data = new Uint8Array(wasm_instance.exports.memory.buffer, text_ptr, text_len);
+        const text = new TextDecoder().decode(data);
+
+        let metrics = canvasCtx.measureText(text);
+        console.log("TEST:", metrics);
+
+        let data_view = new DataView(wasm_instance.exports.memory.buffer, measure_ptr, 5 * 4);
+        data_view.setFloat32(0,  metrics.width, true);
+        data_view.setFloat32(4,  metrics.actualBoundingBoxLeft, true);
+        data_view.setFloat32(8,  metrics.actualBoundingBoxRight, true);
+        data_view.setFloat32(12, metrics.actualBoundingBoxTop, true);
+        data_view.setFloat32(16, metrics.actualBoundingBoxBottom, true);
+    },
     
     fillRect(canvas, x, y, w, h, r, g, b, a) {
         canvasCtx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`; 
