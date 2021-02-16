@@ -1,0 +1,9 @@
+
+use package build_opts as build_opts
+#if build_opts.Runtime != build_opts.Runtime_Js {
+    #error "This software is only compatible with a JavaScript runtime. Use '-r js' to specify this on the command line."
+}
+
+#load "core/std"
+
+#load "src/prez"

@@ -1,0 +1,7 @@
+
+
+use package core
+
+main :: (args: [] cstr) {
+    println("Got to main!");
+}
