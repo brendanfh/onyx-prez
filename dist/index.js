@@ -33,6 +33,16 @@ let canvas_import_obj = {
     fillRect(canvas, x, y, w, h, r, g, b, a) {
         canvasCtx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`; 
         canvasCtx.fillRect(x, y, w, h);
+    },
+
+    fillText(canvas, text_ptr, text_len, x, y, max_width) {
+        const data = new Uint8Array(wasm_instance.exports.memory.buffer, text_ptr, text_len);
+        const str  = new TextDecoder().decode(data);
+
+        canvasCtx.fillStyle = "#ffffff";
+        
+        if (max_width > 0) canvasCtx.fillText(str, x, y, max_width);
+        else               canvasCtx.fillText(str, x, y);
     }
 }
 

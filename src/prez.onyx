@@ -11,6 +11,8 @@ Canvas :: struct {
     fill_rect :: (handle: Handle,
         x: f32, y: f32, w: f32, h: f32,
         r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "fillRect" ---
+
+    fill_text :: (handle: Handle, text: str, x: f32, y: f32, max_width: f32 = -1.0f) -> void #foreign "canvas" "fillText" ---
 }
 
 setup_canvas :: () {
@@ -26,6 +28,8 @@ setup_canvas :: () {
 
     width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
     fill_rect(canvas, width / 2, height / 2, width / 2, height / 2, 1, 0, 0);
+
+    fill_text(canvas, "Hello, World!!", width / 2, height / 2);
 }
 
 main :: (args: [] cstr) {
