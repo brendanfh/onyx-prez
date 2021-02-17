@@ -47,11 +47,12 @@ Slide_Item_Text :: struct {
 
     FontAttributes :: enum #flags { Bold; Italic; Underline; }
 
-    Justify :: enum { Left; Center; Right; }
-
     text    : str;
     y_pos   : f32; // Between 0 and 1
+    padding : f32; // Between 0 and 1
     justify : Justify;
+
+    Justify :: enum { Left; Center; Right; }
 }
 
 
@@ -130,8 +131,65 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
 
     switch kind {
         case Text {
-            set_font(canvas, text.font_name);
-            draw_centered_text(text.text, text.y_pos);
+            set_font_for_text(slide_item);
+
+            use Slide_Item_Text.Justify
+            switch text.justify {
+                case Center do draw_centered_text(text.text, text.y_pos);
+
+                case Left {
+                    use Canvas
+
+                    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+                    x, y := text.padding * width, text.y_pos * height;
+                    fill_text(canvas, text.text, x, y);
+                }
+
+                case Right {
+                    use Canvas
+
+                    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+
+                    font_metrics: TextMetrics;
+                    measure_text(canvas, text.text, ^font_metrics);
+
+                    x, y := width - font_metrics.width - text.padding * width, text.y_pos * height;
+                    fill_text(canvas, text.text, x, y);
+                }
+            }
         }
     }
+
+
+    set_font_for_text :: (use slide_item: ^Slide_Item) {
+        use Slide_Item_Text.FontAttributes
+        use Canvas
+
+        bold_str := "";
+        italic_str := "";
+        underline_str := "";
+
+        if text.font_attr & Bold      != ~~ 0 do bold_str = "bold";
+        if text.font_attr & Italic    != ~~ 0 do italic_str = "italic";
+        if text.font_attr & Underline != ~~ 0 do underline_str = "underline";
+        
+        formatted_name := aprintf(
+            context.allocator,
+            "%s %s %s %ipx %s",
+            bold_str, italic_str, underline_str,
+            text.font_size, text.font_name);
+        defer cfree(formatted_name.data);
+
+        set_font(canvas, formatted_name);
+    }
+}
+
+// @Cleanup: this should be part of the standard library.
+aprintf :: (allocator: Allocator, format: str, va: ...) -> str {
+    // @Robustness: Same potential overflow bug.
+    buffer: [2048] u8;  
+    formatted := conv.str_format_va(format, ~~buffer, va);
+
+    output := string.alloc_copy(formatted, allocator = allocator);
+    return output;
 }

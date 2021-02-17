@@ -46,3 +46,16 @@ setup_canvas :: () {
     set_font(canvas, "bold 72px Arial");
 }
 
+draw_centered_text :: (text: str, y_baseline: f32) {
+    use Canvas
+
+    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+
+    font_metrics: TextMetrics;
+    measure_text(canvas, text, ^font_metrics);
+
+    x := (width - font_metrics.width) / 2;
+
+    fill_text(canvas, text, x, y_baseline * height);
+}
+

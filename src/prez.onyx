@@ -1,20 +1,6 @@
 use package core
 use package event as event
 
-// @Cleanup: Move this elsewhere
-draw_centered_text :: (text: str, y_baseline: f32) {
-    use Canvas
-
-    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
-
-    font_metrics: TextMetrics;
-    measure_text(canvas, text, ^font_metrics);
-
-    x := (width - font_metrics.width) / 2;
-
-    fill_text(canvas, text, x, y_baseline * height);
-}
-
 // This is an integer, not a boolean, because I was noticing an issue
 // where the slide would redraw, but the screen would still be blank
 // because the window was still resizing. Having it do multiple redraws
@@ -24,11 +10,12 @@ redraw := 0
 poll_events :: () {
     use event.DomEventKind
 
+    redraw = 2;
+
     ev: event.Event;
     while event.poll(^ev) do switch ev.kind {
         case Resize {
             printf("New window size: %i, %i\n", ev.resize.width, ev.resize.height);
-            redraw = 2;
 
             use Canvas
             set_size(canvas, ev.resize.width, ev.resize.height);
@@ -42,9 +29,19 @@ poll_events :: () {
                 case Right    do slideshow_advance_slide(^the_slideshow, -1);
                 case #default do slideshow_advance_slide(^the_slideshow, 1);
             }
-
-            redraw = 2;
         }
+
+        case KeyDown {
+            printf("Keydown: %i\n", ev.keyboard.keycode);
+
+            switch ev.keyboard.keycode {
+                case 0x25 do slideshow_advance_slide(^the_slideshow, -1);
+                case 0x27 do slideshow_advance_slide(^the_slideshow, 1);
+            }
+        }
+
+    } else {
+        redraw = 0;
     }
 }
 
@@ -72,13 +69,20 @@ create_dummy_show :: () {
         slide.items[0].kind = Slide_Item.Kind.Text;
         slide.items[0].text.text = "Hello, World!";
         slide.items[0].text.y_pos = .5;
-        slide.items[0].text.font_name = "bold 72px Arail";
+        slide.items[0].text.font_name = "Arail";
+        slide.items[0].text.font_size = 72;
+        slide.items[0].text.font_attr = Slide_Item_Text.FontAttributes.Bold;
+        slide.items[0].text.justify = Slide_Item_Text.Justify.Center;
 
         slide.items[1] = slideshow_make_item(^the_slideshow);
         slide.items[1].kind = Slide_Item.Kind.Text;
         slide.items[1].text.text = "Another, smaller, line of text below the first!";
         slide.items[1].text.y_pos = .6;
-        slide.items[1].text.font_name = "italic 36px Arail";
+        slide.items[1].text.font_name = "Arail";
+        slide.items[1].text.font_size = 36;
+        slide.items[1].text.font_attr = Slide_Item_Text.FontAttributes.Italic;
+        slide.items[1].text.padding = .07;
+        slide.items[1].text.justify = Slide_Item_Text.Justify.Right;
     }
 
     { // Slide 2
@@ -89,19 +93,28 @@ create_dummy_show :: () {
         slide.items[0].kind = Slide_Item.Kind.Text;
         slide.items[0].text.text = "The Second Slide! Duh duh duhhhh";
         slide.items[0].text.y_pos = .2;
-        slide.items[0].text.font_name = "bold 72px Arail";
+        slide.items[0].text.font_name = "Arail";
+        slide.items[0].text.font_size = 72;
+        slide.items[0].text.font_attr = Slide_Item_Text.FontAttributes.Bold;
+        slide.items[0].text.justify = Slide_Item_Text.Justify.Center;
 
         slide.items[1] = slideshow_make_item(^the_slideshow);
         slide.items[1].kind = Slide_Item.Kind.Text;
         slide.items[1].text.text = "Here is some monospace text.";
         slide.items[1].text.y_pos = .4;
-        slide.items[1].text.font_name = "36px monospace";
+        slide.items[1].text.font_name = "monospace";
+        slide.items[1].text.font_size = 36;
+        slide.items[1].text.padding = .07;
+        slide.items[1].text.justify = Slide_Item_Text.Justify.Left;
 
         slide.items[2] = slideshow_make_item(^the_slideshow);
         slide.items[2].kind = Slide_Item.Kind.Text;
         slide.items[2].text.text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.";
-        slide.items[2].text.y_pos = .7;
-        slide.items[2].text.font_name = "36px Calibri";
+        slide.items[2].text.y_pos = .45;
+        slide.items[2].text.font_name = "Calibri";
+        slide.items[2].text.font_size = 36;
+        slide.items[2].text.padding = .07;
+        slide.items[2].text.justify = Slide_Item_Text.Justify.Left;
     }
 }
 
