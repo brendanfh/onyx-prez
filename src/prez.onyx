@@ -36,6 +36,14 @@ poll_events :: () {
 
         case MouseDown {
             printf("Mouse down: %i, %i\n", ev.mouse.pos_x, ev.mouse.pos_y);
+
+            use event.MouseButton
+            switch ev.mouse.button {
+                case Right    do slideshow_advance_slide(^the_slideshow, -1);
+                case #default do slideshow_advance_slide(^the_slideshow, 1);
+            }
+
+            redraw = 2;
         }
     }
 }
@@ -71,6 +79,29 @@ create_dummy_show :: () {
         slide.items[1].text.text = "Another, smaller, line of text below the first!";
         slide.items[1].text.y_pos = .6;
         slide.items[1].text.font_name = "italic 36px Arail";
+    }
+
+    { // Slide 2
+        slide := slideshow_insert_slide(^the_slideshow);
+        slide_init(slide, background_color = Color.{ 0.2, 0.1, 0.1 }, item_count = 3);
+        
+        slide.items[0] = slideshow_make_item(^the_slideshow);
+        slide.items[0].kind = Slide_Item.Kind.Text;
+        slide.items[0].text.text = "The Second Slide! Duh duh duhhhh";
+        slide.items[0].text.y_pos = .2;
+        slide.items[0].text.font_name = "bold 72px Arail";
+
+        slide.items[1] = slideshow_make_item(^the_slideshow);
+        slide.items[1].kind = Slide_Item.Kind.Text;
+        slide.items[1].text.text = "Here is some monospace text.";
+        slide.items[1].text.y_pos = .4;
+        slide.items[1].text.font_name = "36px monospace";
+
+        slide.items[2] = slideshow_make_item(^the_slideshow);
+        slide.items[2].kind = Slide_Item.Kind.Text;
+        slide.items[2].text.text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.";
+        slide.items[2].text.y_pos = .7;
+        slide.items[2].text.font_name = "36px Calibri";
     }
 }
 

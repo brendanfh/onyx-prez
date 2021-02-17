@@ -62,6 +62,11 @@ let event_import_obj = {
         });
 
         push_event_to_buffer(esp, event_size, 0x06, [ window.innerWidth, window.innerHeight ]);
+
+        document.oncontextmenu = (e) => {
+            e.preventDefault = true;
+            return false;
+        };
     }
 }
 

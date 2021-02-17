@@ -58,19 +58,34 @@ Slide_Item_Text :: struct {
 
 slideshow_make :: (allocator := context.allocator) -> Slideshow {
     slideshow: Slideshow;
-    slideshow.title = "Untitled Slideshow";
-
-    slideshow.arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
-
-    array.init(^slideshow.slides, 4);
-
+    slideshow_init(^slideshow, allocator);
     return slideshow;
+}
+
+slideshow_init :: (use s: ^Slideshow, allocator := context.allocator) {
+    title = "Untitled Slideshow";
+    current_slide = 0;
+
+    arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
+    array.init(^slides, 4);
+}
+
+slideshow_reset :: (use s: ^Slideshow) {
+    alloc.arena.free(^arena);
+    array.free(^slides);
+
+    slideshow_init(s);
 }
 
 slideshow_get_current_slide :: (use s: ^Slideshow) -> ^Slide {
     current_slide = math.clamp(current_slide, 0, slides.count - 1); 
 
     return ^slides[current_slide];
+}
+
+slideshow_advance_slide :: (use s: ^Slideshow, count := 1) {
+    current_slide += count;
+    current_slide = math.clamp(current_slide, 0, slides.count - 1); 
 }
 
 slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
@@ -82,7 +97,8 @@ slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
     }
 
     array.ensure_capacity(^slides, slides.count + 1);
-    return ^slides[at];
+    defer slides.count += 1;
+    return ^slides[slides.count];
 }
 
 slideshow_make_item :: (use s: ^Slideshow) -> ^Slide_Item {
