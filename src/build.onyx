@@ -9,3 +9,4 @@ use package build_opts as build_opts
 #load "src/prez"
 #load "src/events"
 #load "src/slides"
+#load "src/canvas"

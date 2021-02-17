@@ -1,0 +1,48 @@
+use package core
+
+Canvas :: struct {
+    Handle :: #type u32
+
+    init  :: (id: str) -> Handle #foreign "canvas" "init" ---
+    clear :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> Handle #foreign "canvas" "clear" ---
+
+    get_width  :: (handle: Handle) -> u32 #foreign "canvas" "get_width" ---
+    get_height :: (handle: Handle) -> u32 #foreign "canvas" "get_height" ---
+
+    set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "set_size" ---
+
+    set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
+
+    TextMetrics :: struct {
+        width : f32;
+        box   : Box;
+
+        Box :: struct {
+            left, right : f32;
+            top, bottom : f32;
+        }
+    }
+
+    measure_text :: (handle: Handle, text: str, measurements: ^TextMetrics) -> void #foreign "canvas" "measureText" ---
+
+    fill_rect :: (handle: Handle,
+        x: f32, y: f32, w: f32, h: f32,
+        r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "fillRect" ---
+
+    fill_text :: (handle: Handle, text: str, x: f32, y: f32, max_width: f32 = -1.0f) -> void #foreign "canvas" "fillText" ---
+}
+
+// :GlobalVariable
+canvas: Canvas.Handle
+
+setup_canvas :: () {
+    use Canvas
+
+    canvas = init("prez_canvas");
+    assert(canvas != -1, "Failed to set up canvas.");
+
+    clear(canvas, 0.1, 0.1, 0.1);
+
+    set_font(canvas, "bold 72px Arial");
+}
+

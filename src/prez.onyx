@@ -1,52 +1,7 @@
 use package core
 use package event as event
 
-Canvas :: struct {
-    Handle :: #type u32
-
-    init  :: (id: str) -> Handle #foreign "canvas" "init" ---
-    clear :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> Handle #foreign "canvas" "clear" ---
-
-    get_width  :: (handle: Handle) -> u32 #foreign "canvas" "get_width" ---
-    get_height :: (handle: Handle) -> u32 #foreign "canvas" "get_height" ---
-
-    set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "set_size" ---
-
-    set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
-
-    TextMetrics :: struct {
-        width : f32;
-        box   : Box;
-
-        Box :: struct {
-            left, right : f32;
-            top, bottom : f32;
-        }
-    }
-
-    measure_text :: (handle: Handle, text: str, measurements: ^TextMetrics) -> void #foreign "canvas" "measureText" ---
-
-    fill_rect :: (handle: Handle,
-        x: f32, y: f32, w: f32, h: f32,
-        r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "fillRect" ---
-
-    fill_text :: (handle: Handle, text: str, x: f32, y: f32, max_width: f32 = -1.0f) -> void #foreign "canvas" "fillText" ---
-}
-
-// :GlobalVariable
-canvas: Canvas.Handle
-
-setup_canvas :: () {
-    use Canvas
-
-    canvas = init("prez_canvas");
-    assert(canvas != -1, "Failed to set up canvas.");
-
-    clear(canvas, 0.1, 0.1, 0.1);
-
-    set_font(canvas, "bold 72px Arial");
-}
-
+// @Cleanup: Move this elsewhere
 draw_centered_text :: (text: str, y_baseline: f32) {
     use Canvas
 
@@ -60,7 +15,11 @@ draw_centered_text :: (text: str, y_baseline: f32) {
     fill_text(canvas, text, x, y_baseline * height);
 }
 
-dirty_display := true
+// This is an integer, not a boolean, because I was noticing an issue
+// where the slide would redraw, but the screen would still be blank
+// because the window was still resizing. Having it do multiple redraws
+// when needed prevents this issue.
+redraw := 0
 
 poll_events :: () {
     use event.DomEventKind
@@ -69,7 +28,7 @@ poll_events :: () {
     while event.poll(^ev) do switch ev.kind {
         case Resize {
             printf("New window size: %i, %i\n", ev.resize.width, ev.resize.height);
-            dirty_display = true;
+            redraw = 2;
 
             use Canvas
             set_size(canvas, ev.resize.width, ev.resize.height);
@@ -77,9 +36,6 @@ poll_events :: () {
 
         case MouseDown {
             printf("Mouse down: %i, %i\n", ev.mouse.pos_x, ev.mouse.pos_y);
-
-            use Canvas
-            fill_rect(canvas, ~~ ev.mouse.pos_x, ~~ ev.mouse.pos_y, 32, 32, 1, 0, 0);
         }
     }
 }
@@ -87,21 +43,42 @@ poll_events :: () {
 loop :: () -> void #export "loop" {
     poll_events();
 
-    if dirty_display {
-        dirty_display = false;
+    if redraw > 0 {
+        current_slide := slideshow_get_current_slide(^the_slideshow);
+        slide_render(current_slide);
 
-        Canvas.clear(canvas, 0.1, 0.1, 0.1);
-        Canvas.set_font(canvas, "bold 72px Arial");
-        draw_centered_text("Hello, World! This is a long title!", .3);
+        redraw -= 1;
+    }
+}
 
-        Canvas.set_font(canvas, "bold 48px Arial");
-        draw_centered_text("This is some more text.", 170);
+the_slideshow : Slideshow;
+
+create_dummy_show :: () {
+    the_slideshow = slideshow_make();
+    
+    { // Slide 1
+        slide := slideshow_insert_slide(^the_slideshow);
+        slide_init(slide, background_color = Color.{ 0.1, 0.1, 0.2 }, item_count = 2);
+        
+        slide.items[0] = slideshow_make_item(^the_slideshow);
+        slide.items[0].kind = Slide_Item.Kind.Text;
+        slide.items[0].text.text = "Hello, World!";
+        slide.items[0].text.y_pos = .5;
+        slide.items[0].text.font_name = "bold 72px Arail";
+
+        slide.items[1] = slideshow_make_item(^the_slideshow);
+        slide.items[1].kind = Slide_Item.Kind.Text;
+        slide.items[1].text.text = "Another, smaller, line of text below the first!";
+        slide.items[1].text.y_pos = .6;
+        slide.items[1].text.font_name = "italic 36px Arail";
     }
 }
 
 main :: (args: [] cstr) {
     setup_canvas();
     event.init();
+
+    create_dummy_show();
 
     start_loop :: () -> void #foreign "host" "start_loop" ---
     start_loop();

@@ -1,7 +1,8 @@
 use package core
 
 Color :: struct {
-    r, g, b, a: f32;
+    r, g, b: f32;
+    a: f32 = 1;
 }
 
 Slideshow :: struct {
@@ -16,8 +17,7 @@ Slideshow :: struct {
 }
 
 Slide :: struct {
-    foreground, background: Color;
-    font_name : str;
+    background: Color;
 
     items : [] ^Slide_Item;
 }
@@ -28,7 +28,7 @@ Slide_Item :: struct #union {
         Text;
     }
 
-    base: Slide_Item_Base;
+    use base: Slide_Item_Base;
     text: Slide_Item_Text;
 }
 
@@ -38,6 +38,14 @@ Slide_Item_Base :: struct {
 
 Slide_Item_Text :: struct {
     use base : Slide_Item_Base;
+
+    color : Color;
+
+    font_name : str;
+    font_size : u32;
+    font_attr : FontAttributes;
+
+    FontAttributes :: enum #flags { Bold; Italic; Underline; }
 
     Justify :: enum { Left; Center; Right; }
 
@@ -63,4 +71,51 @@ slideshow_get_current_slide :: (use s: ^Slideshow) -> ^Slide {
     current_slide = math.clamp(current_slide, 0, slides.count - 1); 
 
     return ^slides[current_slide];
+}
+
+slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
+    // @Robustness: not checking the return values on these calls
+
+    if at > 0 {
+        array.insert_empty(^slides, at);
+        return ^slides[at];
+    }
+
+    array.ensure_capacity(^slides, slides.count + 1);
+    return ^slides[at];
+}
+
+slideshow_make_item :: (use s: ^Slideshow) -> ^Slide_Item {
+    allocator := alloc.arena.make_allocator(^arena);
+    return new(Slide_Item, allocator = allocator);
+}
+
+slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4) {
+    background = background_color;
+
+    items = memory.make_slice(#type ^Slide_Item, item_count);
+    memory.set(items.data, 0, items.count * sizeof ^Slide_Item);
+}
+
+slide_render :: (use slide: ^Slide) {
+    // I would like to alias Canvas to C here, but right now
+    // this does not work:
+    //
+    //     C :: Canvas
+    //
+    Canvas.clear(canvas, background.r, background.g, background.b, background.a);
+
+    for item: items do if item != null do slide_item_render(item, slide);
+}
+
+slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
+    use Canvas
+    use Slide_Item.Kind
+
+    switch kind {
+        case Text {
+            set_font(canvas, text.font_name);
+            draw_centered_text(text.text, text.y_pos);
+        }
+    }
 }
