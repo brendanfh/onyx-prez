@@ -57,7 +57,7 @@ draw_centered_text :: (text: str, y_baseline: f32) {
 
     x := (width - font_metrics.width) / 2;
 
-    fill_text(canvas, text, x, y_baseline);
+    fill_text(canvas, text, x, y_baseline * height);
 }
 
 dirty_display := true
@@ -71,7 +71,7 @@ poll_events :: () {
             printf("New window size: %i, %i\n", ev.resize.width, ev.resize.height);
             dirty_display = true;
 
-            use Canvas;
+            use Canvas
             set_size(canvas, ev.resize.width, ev.resize.height);
         }
 
@@ -92,7 +92,7 @@ loop :: () -> void #export "loop" {
 
         Canvas.clear(canvas, 0.1, 0.1, 0.1);
         Canvas.set_font(canvas, "bold 72px Arial");
-        draw_centered_text("Hello, World! This is a long title!", 100);
+        draw_centered_text("Hello, World! This is a long title!", .3);
 
         Canvas.set_font(canvas, "bold 48px Arial");
         draw_centered_text("This is some more text.", 170);

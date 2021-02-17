@@ -1,0 +1,66 @@
+use package core
+
+Color :: struct {
+    r, g, b, a: f32;
+}
+
+Slideshow :: struct {
+    // A basic arena that should store everything related to slides.
+    // This makes it easy to free everything at once.
+    arena : alloc.arena.ArenaState;
+
+    title  : str;
+    slides : [..] Slide;
+
+    current_slide : i32;
+}
+
+Slide :: struct {
+    foreground, background: Color;
+    font_name : str;
+
+    items : [] ^Slide_Item;
+}
+
+Slide_Item :: struct #union {
+    Kind :: enum {
+        Undefined;
+        Text;
+    }
+
+    base: Slide_Item_Base;
+    text: Slide_Item_Text;
+}
+
+Slide_Item_Base :: struct {
+    kind : Slide_Item.Kind;
+}
+
+Slide_Item_Text :: struct {
+    use base : Slide_Item_Base;
+
+    Justify :: enum { Left; Center; Right; }
+
+    text    : str;
+    y_pos   : f32; // Between 0 and 1
+    justify : Justify;
+}
+
+
+
+slideshow_make :: (allocator := context.allocator) -> Slideshow {
+    slideshow: Slideshow;
+    slideshow.title = "Untitled Slideshow";
+
+    slideshow.arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
+
+    array.init(^slideshow.slides, 4);
+
+    return slideshow;
+}
+
+slideshow_get_current_slide :: (use s: ^Slideshow) -> ^Slide {
+    current_slide = math.clamp(current_slide, 0, slides.count - 1); 
+
+    return ^slides[current_slide];
+}
