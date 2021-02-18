@@ -108,13 +108,14 @@ create_dummy_show :: () {
         slide.items[1].text.justify = Slide_Item_Text.Justify.Left;
 
         slide.items[2] = slideshow_make_item(^the_slideshow);
-        slide.items[2].kind = Slide_Item.Kind.Text;
-        slide.items[2].text.text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.";
-        slide.items[2].text.y_pos = .45;
-        slide.items[2].text.font_name = "Calibri";
-        slide.items[2].text.font_size = 36;
-        slide.items[2].text.padding = .07;
-        slide.items[2].text.justify = Slide_Item_Text.Justify.Left;
+        slide.items[2].text = Slide_Item_Text.{
+            text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.",
+            y_pos = .45,
+            font_name = "Calibri",
+            font_size = 36,
+            padding = .07,
+            justify = Slide_Item_Text.Justify.Left,
+        };
     }
 }
 

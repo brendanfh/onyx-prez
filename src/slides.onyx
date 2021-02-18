@@ -37,13 +37,13 @@ Slide_Item_Base :: struct {
 }
 
 Slide_Item_Text :: struct {
-    use base : Slide_Item_Base;
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Text };
 
-    color : Color;
+    color : Color = Color.{ 1, 1, 1 };
 
     font_name : str;
     font_size : u32;
-    font_attr : FontAttributes;
+    font_attr : FontAttributes = ~~ 0;
 
     FontAttributes :: enum #flags { Bold; Italic; Underline; }
 
@@ -53,6 +53,17 @@ Slide_Item_Text :: struct {
     justify : Justify;
 
     Justify :: enum { Left; Center; Right; }
+}
+
+Slide_Item_Image :: struct {
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Text };
+
+    path  : str;
+    x, y  : f32; // Between 0 and 1
+    width : f32; // Between 0 and 1
+
+    // Currently the image maintains the original aspect ratio,
+    // so the height of the image is automatically determined.
 }
 
 
@@ -157,6 +168,10 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
                     fill_text(canvas, text.text, x, y);
                 }
             }
+        }
+
+        case Image {
+            assert(false, "Slide_Item_Image not implemented!");
         }
     }
 
