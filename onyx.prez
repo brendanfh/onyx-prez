@@ -1,0 +1,41 @@
+
+[define_text_style normal color 255 255 255 font_size 40 font_name "Arial" left padding 10]
+[define_text_style title color 255 255 255 font_attr bold font_size 72 font_name "Arial" centered]
+[define_text_style subtitle color 255 255 255 font_attr italic font_size 72 font_name "Arial" centered]
+[define_text_style header color 255 255 255 font_attr bold font_size 72 font_name "Arial" left padding 10]
+
+# ---------------------------------------------
+[slide] [background 30 30 30]
+
+[rect color 0 0 0 x 0 w 100 y 40 h 20] 
+
+[text_style title font_size 96]
+[y 50] Onyx
+
+[text_style normal font_attr italic font_size 36 centered]
+[y 55] A simple, yet powerful programming language for WebAssembly.
+
+
+
+# ---------------------------------------------
+# Introduce what Onyx is, the design goals, the improvements over C, etc.
+
+[slide]
+[rect color 0 0 0 x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] What is Onyx?
+
+[text_style normal]
+[y 20] ▪ New programming language for WebAssembly
+[y 25] ▪ No dependence on other langauges
+[y 30] ▪ Fast compilation by design
+[y 35] ▪ Easy to write by design
+
+
+[slide]
+[rect color 0 0 0 x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Design of Onyx
+
+[text_style normal]
+[y 20] 
