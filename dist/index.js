@@ -2,6 +2,7 @@
 let wasm_instance;
 let canvasElem;
 let canvasCtx;
+let __loaded_images = [];
 
 const MAGIC_CANVAS_NUMBER = 0x5052455A;
 
@@ -134,6 +135,36 @@ let canvas_import_obj = {
         
         if (max_width > 0) canvasCtx.fillText(str, x, y, max_width);
         else               canvasCtx.fillText(str, x, y);
+    },
+
+    drawImage(canvas, image_idx, x, y, w, h) {
+        let image = __loaded_images[image_idx];
+
+        canvasCtx.drawImage(image, x, y, w, h);
+    }
+}
+
+let html_import_obj = {
+    load_image(path_str, path_len, out_image) {
+        const data = new Uint8Array(wasm_instance.exports.memory.buffer, path_str, path_len);
+        const path = new TextDecoder().decode(data);
+
+        let image = new Image();
+        __loaded_images.push(image);
+        
+        let data_view = new DataView(wasm_instance.exports.memory.buffer, out_image, 3 * 4);
+        data_view.setInt32(0, __loaded_images.length - 1, true);
+
+        image.src = path;
+    },
+
+    store_image_size(out_image) {
+        let data_view = new DataView(wasm_instance.exports.memory.buffer, out_image, 3 * 4);
+        let image_idx = data_view.getInt32(0, true);
+
+        let image = __loaded_images[image_idx];
+        data_view.setInt32(4, image.width, true);
+        data_view.setInt32(8, image.height, true);
     }
 }
 
@@ -159,6 +190,7 @@ let import_obj = {
 
     canvas: canvas_import_obj,
     event:  event_import_obj,
+    html:   html_import_obj,
 }
 
 function main() {

@@ -40,6 +40,8 @@ poll_events :: () {
             }
         }
 
+        case #default do redraw = 0;
+
     } else {
         redraw = 0;
     }
@@ -87,11 +89,11 @@ create_dummy_show :: () {
 
     { // Slide 2
         slide := slideshow_insert_slide(^the_slideshow);
-        slide_init(slide, background_color = Color.{ 0.2, 0.1, 0.1 }, item_count = 3);
+        slide_init(slide, background_color = Color.{ 0.2, 0.1, 0.1 }, item_count = 4);
         
         slide.items[0] = slideshow_make_item(^the_slideshow);
         slide.items[0].kind = Slide_Item.Kind.Text;
-        slide.items[0].text.text = "The Second Slide! Duh duh duhhhh";
+        slide.items[0].text.text = "The Second Slide!";
         slide.items[0].text.y_pos = .2;
         slide.items[0].text.font_name = "Arail";
         slide.items[0].text.font_size = 72;
@@ -101,7 +103,7 @@ create_dummy_show :: () {
         slide.items[1] = slideshow_make_item(^the_slideshow);
         slide.items[1].kind = Slide_Item.Kind.Text;
         slide.items[1].text.text = "Here is some monospace text.";
-        slide.items[1].text.y_pos = .4;
+        slide.items[1].text.y_pos = .3;
         slide.items[1].text.font_name = "monospace";
         slide.items[1].text.font_size = 36;
         slide.items[1].text.padding = .07;
@@ -110,11 +112,21 @@ create_dummy_show :: () {
         slide.items[2] = slideshow_make_item(^the_slideshow);
         slide.items[2].text = Slide_Item_Text.{
             text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.",
-            y_pos = .45,
+            y_pos = .35,
             font_name = "Calibri",
             font_size = 36,
             padding = .07,
             justify = Slide_Item_Text.Justify.Left,
+        };
+
+        slideshow_load_image(^the_slideshow, "first_image", "images/first.jpg");
+
+        slide.items[3] = slideshow_make_item(^the_slideshow);
+        slide.items[3].image = Slide_Item_Image.{
+            name = "first_image",
+            x = .3,
+            y = .4,
+            width = .4,
         };
     }
 }

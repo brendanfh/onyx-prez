@@ -1,5 +1,11 @@
 use package core
 
+HTML_Image :: struct {
+    handle: i32 = -1;
+    width:  i32 = 1; // To avoid dividing by 0
+    height: i32 = 1;
+}
+
 Color :: struct {
     r, g, b: f32;
     a: f32 = 1;
@@ -14,6 +20,8 @@ Slideshow :: struct {
     slides : [..] Slide;
 
     current_slide : i32;
+
+    image_map : map.Map(str, HTML_Image);
 }
 
 Slide :: struct {
@@ -26,10 +34,12 @@ Slide_Item :: struct #union {
     Kind :: enum {
         Undefined;
         Text;
+        Image;
     }
 
     use base: Slide_Item_Base;
-    text: Slide_Item_Text;
+    text  : Slide_Item_Text;
+    image : Slide_Item_Image; 
 }
 
 Slide_Item_Base :: struct {
@@ -56,9 +66,9 @@ Slide_Item_Text :: struct {
 }
 
 Slide_Item_Image :: struct {
-    use base := Slide_Item_Base.{ Slide_Item.Kind.Text };
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Image };
 
-    path  : str;
+    name  : str;
     x, y  : f32; // Between 0 and 1
     width : f32; // Between 0 and 1
 
@@ -80,11 +90,15 @@ slideshow_init :: (use s: ^Slideshow, allocator := context.allocator) {
 
     arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
     array.init(^slides, 4);
+
+    map.init(^image_map, default = HTML_Image.{});
 }
 
 slideshow_reset :: (use s: ^Slideshow) {
     alloc.arena.free(^arena);
     array.free(^slides);
+
+    map.free(^image_map);
 
     slideshow_init(s);
 }
@@ -116,6 +130,20 @@ slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
 slideshow_make_item :: (use s: ^Slideshow) -> ^Slide_Item {
     allocator := alloc.arena.make_allocator(^arena);
     return new(Slide_Item, allocator = allocator);
+}
+
+slideshow_load_image :: (use s: ^Slideshow, image_name: str, image_path: str) -> HTML_Image {
+    if map.has(^image_map, image_name) {
+        printf("Warning: the image '%s' was already defined.", image_name);
+        return image_map.default_value;
+    }
+
+    html_image_load :: (path: str, out_image: ^HTML_Image) -> void #foreign "html" "load_image" ---
+    image: HTML_Image;
+    html_image_load(image_path, ^image);
+
+    map.put(^image_map, image_name, image);
+    return image;
 }
 
 slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4) {
@@ -171,7 +199,22 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
         }
 
         case Image {
-            assert(false, "Slide_Item_Image not implemented!");
+            use Canvas
+
+            if html_image := map.get(^the_slideshow.image_map, image.name); html_image.handle != -1 {
+                width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+
+                // @Speed: There is a much better way of doing this...
+                store_image_size :: (html_image: ^HTML_Image) -> void #foreign "html" "store_image_size" ---
+                store_image_size(^html_image);
+
+                x := image.x * width;
+                y := image.y * height;
+                w := image.width * width;
+                h := w * (cast(f32) html_image.height / cast(f32) html_image.width);
+                
+                draw_image(canvas, html_image.handle, x, y, w, h);
+            }
         }
     }
 
