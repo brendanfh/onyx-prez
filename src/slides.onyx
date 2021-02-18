@@ -171,6 +171,7 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
     switch kind {
         case Text {
             set_font_for_text(slide_item);
+            set_color(canvas, text.color.r, text.color.g, text.color.b, text.color.a);
 
             use Slide_Item_Text.Justify
             switch text.justify {
@@ -205,6 +206,12 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
                 width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
 
                 // @Speed: There is a much better way of doing this...
+                // @Robustness: Currently, because HTML images are asynchronously loaded,
+                // the image dimensions are not known when the load_image call is made.
+                // These means that the dimensions need to be queried later once the image
+                // has been loaded. The real bad thing here, is that the 'html_image' being
+                // passed is a local copy from the image_map. This means everytime this image
+                // is drawn, it has to requery the image dimensions... Uck...
                 store_image_size :: (html_image: ^HTML_Image) -> void #foreign "html" "store_image_size" ---
                 store_image_size(^html_image);
 

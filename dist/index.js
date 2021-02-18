@@ -108,6 +108,10 @@ let canvas_import_obj = {
         canvasCtx.font = str;
     },
 
+    setColor(canvas, r, g, b, a) {
+        canvasCtx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`; 
+    },
+
     measureText(canvas, text_ptr, text_len, measure_ptr) {
         const data = new Uint8Array(wasm_instance.exports.memory.buffer, text_ptr, text_len);
         const text = new TextDecoder().decode(data);
@@ -131,8 +135,6 @@ let canvas_import_obj = {
         const data = new Uint8Array(wasm_instance.exports.memory.buffer, text_ptr, text_len);
         const str  = new TextDecoder().decode(data);
 
-        canvasCtx.fillStyle = "#ffffff";
-        
         if (max_width > 0) canvasCtx.fillText(str, x, y, max_width);
         else               canvasCtx.fillText(str, x, y);
     },

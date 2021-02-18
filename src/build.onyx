@@ -10,3 +10,4 @@ use package build_opts as build_opts
 #load "src/events"
 #load "src/slides"
 #load "src/canvas"
+#load "src/show_parser"

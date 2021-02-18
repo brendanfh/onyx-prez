@@ -1,0 +1,219 @@
+use package core
+
+parse_slideshow :: (source: str, slideshow: ^Slideshow) {
+    use io
+
+    parse_arena := alloc.arena.make(context.allocator, arena_size = 16 * 1024);
+    defer alloc.arena.free(^parse_arena);
+
+    parse_alloc := alloc.arena.make_allocator(^parse_arena);
+
+    show_stream := string_stream_make(source);
+    show_reader := reader_make(^show_stream);
+
+    default_text_style := Slide_Item_Text.{
+        font_name = "Calibri",
+        font_size = 12,
+        text = "UNDEFINED TEXT",
+        y_pos = 0, padding = 0, justify = Slide_Item_Text.Justify.Left,
+    };
+
+    text_styles := map.make(str, Slide_Item_Text, default_text_style);
+    defer map.free(^text_styles);
+
+    current_slide: ^Slide;
+    current_item_idx := 0;
+    current_text_style: Slide_Item_Text;
+
+    while !stream_end_of_file(^show_stream) {
+        skip_whitespace(^show_reader); 
+        defer skip_whitespace(^show_reader); 
+
+        _, next_byte := stream_peek_byte(^show_stream);
+        switch next_byte {
+            case #char "[" {
+                // Command
+                read_byte(^show_reader);
+
+                command_name := read_word(^show_reader, allocator=parse_alloc);
+                printf("Parsing command: %s\n", command_name);
+
+                if command_name == "slide" {
+                    prev_slide := ^slideshow.slides[slideshow.slides.count - 1];
+                    current_slide = slideshow_insert_slide(slideshow);
+                    current_item_idx = 0;
+
+                    // @Robustness @Incomplete: Currently, there is a fixed number of items
+                    // on EVERY slide, which both wastes memory for small slides, and limits
+                    // how many things can be in a slide.
+                    slide_init(current_slide, background_color=prev_slide.background, item_count = 16);
+                }
+                elseif command_name == "background" {
+                    r, g, b := parse_color(^show_reader);
+                    current_slide.background = Color.{ r, g, b };
+                }
+                elseif command_name == "y" {
+                    y := read_u32(^show_reader);
+                    current_text_style.y_pos = cast(f32) y / 100;
+                }
+                elseif command_name == "text_style" {
+                    text_style_name := read_word(^show_reader, numeric_allowed=true);
+                    if !map.has(^text_styles, text_style_name) {
+                        printf("Text style '%s' was never defined.\n", text_style_name);
+                    }
+
+                    text_style := map.get(^text_styles, text_style_name);
+                    current_text_style = text_style;
+
+                    parse_text_style(^show_reader, ^current_text_style, parse_alloc);
+                }
+                elseif command_name == "define_text_style" {
+                    text_style_name := read_word(^show_reader, numeric_allowed=true);
+
+                    current_text_style = default_text_style;
+                    parse_text_style(^show_reader, ^current_text_style, parse_alloc);
+                    map.put(^text_styles, text_style_name, current_text_style);
+                }
+                elseif command_name == "load_image" {
+                    image_name := read_word(^show_reader, numeric_allowed=true);
+                    image_path := parse_string(^show_reader, allocator=parse_alloc);
+
+                    slideshow_load_image(slideshow, image_name, image_path);
+                }
+                elseif command_name == "image" {
+                    new_slide_image := slideshow_make_item(slideshow);
+                    new_slide_image.kind = Slide_Item.Kind.Image;
+                    parse_image_style(^show_reader, ^new_slide_image.image, parse_alloc);
+
+                    current_slide.items[current_item_idx] = new_slide_image;
+                    current_item_idx += 1;
+                }
+                else {
+                    printf("******** Unknown command: '%s'.\n", command_name);
+                }
+                
+                read_until(^show_reader, #char "]", allocator=parse_alloc, consume_end=true);
+            }
+
+            // @Memory: should be able to use advance_line here instead, but
+            // there are some issue with that consuming two lines instead.
+            case #char "#" do read_line(^show_reader, allocator=parse_alloc);
+
+            case #default {
+                // @Memory
+                text := read_line(^show_reader);
+
+                new_slide_text := slideshow_make_item(slideshow);
+                new_slide_text.text = current_text_style;
+                new_slide_text.text.text = text; // Oofta...
+
+                current_slide.items[current_item_idx] = new_slide_text;
+                current_item_idx += 1;
+            }
+        }
+    }
+
+    printf("Total slide count: %i\n", slideshow.slides.count);
+}
+
+#private_file
+parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_alloc := context.allocator) {
+    use io
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "color" {
+            r, g, b := parse_color(reader);
+            text_style.color = Color.{ r, g, b };
+            printf("Parsed color: %f %f %f\n", r, g, b);
+        }
+        elseif style_name == "font_size" {
+            text_style.font_size = read_u32(reader);
+        }
+        elseif style_name == "font_name" {
+            text_style.font_name = parse_string(reader);
+        }
+        elseif style_name == "font_attr" {
+            font_attr := read_word(reader, allocator=parse_alloc);
+
+            if     font_attr == "bold"   do text_style.font_attr |= Slide_Item_Text.FontAttributes.Bold;
+            elseif font_attr == "italic" do text_style.font_attr |= Slide_Item_Text.FontAttributes.Italic;
+        }
+        elseif style_name == "padding" {
+            padding := read_u32(reader);
+            text_style.padding = cast(f32) padding / 100;
+        }
+        elseif style_name == "left"     do text_style.justify = Slide_Item_Text.Justify.Left;
+        elseif style_name == "centered" do text_style.justify = Slide_Item_Text.Justify.Center;
+        elseif style_name == "right"    do text_style.justify = Slide_Item_Text.Justify.Right;
+        else {
+            use package core { printf as pf }
+            pf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_image_style :: (reader: ^io.Reader, image_style: ^Slide_Item_Image, parse_alloc := context.allocator) {
+    use io
+
+    image_name := read_word(reader, numeric_allowed=true);
+    image_style.name = image_name;
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "x" {
+            x := read_u32(reader);
+            image_style.x = cast(f32) x / 100;
+        }
+        elseif style_name == "y" {
+            y := read_u32(reader);
+            image_style.y = cast(f32) y / 100;
+        }
+        elseif style_name == "width" {
+            width := read_u32(reader);
+            image_style.width = cast(f32) width / 100;
+        }
+        else {
+            use package core { printf as pf }
+            pf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_color :: (reader: ^io.Reader) -> (f32, f32, f32) {
+    r := io.read_u32(reader);
+    g := io.read_u32(reader);
+    b := io.read_u32(reader);
+
+    fr := cast(f32) r / 255;
+    fg := cast(f32) g / 255;
+    fb := cast(f32) b / 255;
+
+    return fr, fg, fb;
+}
+
+#private_file
+parse_string :: (reader: ^io.Reader, allocator := context.allocator) -> str {
+    use io
+
+    // @Cleanup
+    dummy := read_until(reader, #char "\"", context.temp_allocator);
+    read_byte(reader);
+
+    str_contents := read_until(reader, #char "\"", allocator=allocator);
+    read_byte(reader);
+
+    return str_contents;
+}

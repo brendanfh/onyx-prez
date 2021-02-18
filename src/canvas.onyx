@@ -12,6 +12,7 @@ Canvas :: struct {
     set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "set_size" ---
 
     set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
+    set_color :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "setColor" ---
 
     TextMetrics :: struct {
         width : f32;

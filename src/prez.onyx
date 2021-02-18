@@ -60,82 +60,12 @@ loop :: () -> void #export "loop" {
 
 the_slideshow : Slideshow;
 
-create_dummy_show :: () {
-    the_slideshow = slideshow_make();
-    
-    { // Slide 1
-        slide := slideshow_insert_slide(^the_slideshow);
-        slide_init(slide, background_color = Color.{ 0.1, 0.1, 0.2 }, item_count = 2);
-        
-        slide.items[0] = slideshow_make_item(^the_slideshow);
-        slide.items[0].kind = Slide_Item.Kind.Text;
-        slide.items[0].text.text = "Hello, World!";
-        slide.items[0].text.y_pos = .5;
-        slide.items[0].text.font_name = "Arail";
-        slide.items[0].text.font_size = 72;
-        slide.items[0].text.font_attr = Slide_Item_Text.FontAttributes.Bold;
-        slide.items[0].text.justify = Slide_Item_Text.Justify.Center;
-
-        slide.items[1] = slideshow_make_item(^the_slideshow);
-        slide.items[1].kind = Slide_Item.Kind.Text;
-        slide.items[1].text.text = "Another, smaller, line of text below the first!";
-        slide.items[1].text.y_pos = .6;
-        slide.items[1].text.font_name = "Arail";
-        slide.items[1].text.font_size = 36;
-        slide.items[1].text.font_attr = Slide_Item_Text.FontAttributes.Italic;
-        slide.items[1].text.padding = .07;
-        slide.items[1].text.justify = Slide_Item_Text.Justify.Right;
-    }
-
-    { // Slide 2
-        slide := slideshow_insert_slide(^the_slideshow);
-        slide_init(slide, background_color = Color.{ 0.2, 0.1, 0.1 }, item_count = 4);
-        
-        slide.items[0] = slideshow_make_item(^the_slideshow);
-        slide.items[0].kind = Slide_Item.Kind.Text;
-        slide.items[0].text.text = "The Second Slide!";
-        slide.items[0].text.y_pos = .2;
-        slide.items[0].text.font_name = "Arail";
-        slide.items[0].text.font_size = 72;
-        slide.items[0].text.font_attr = Slide_Item_Text.FontAttributes.Bold;
-        slide.items[0].text.justify = Slide_Item_Text.Justify.Center;
-
-        slide.items[1] = slideshow_make_item(^the_slideshow);
-        slide.items[1].kind = Slide_Item.Kind.Text;
-        slide.items[1].text.text = "Here is some monospace text.";
-        slide.items[1].text.y_pos = .3;
-        slide.items[1].text.font_name = "monospace";
-        slide.items[1].text.font_size = 36;
-        slide.items[1].text.padding = .07;
-        slide.items[1].text.justify = Slide_Item_Text.Justify.Left;
-
-        slide.items[2] = slideshow_make_item(^the_slideshow);
-        slide.items[2].text = Slide_Item_Text.{
-            text = "Here is a block of much longer text that will not wrap correctly, which is annoying but I think the best thing to do is... I don't know yet.",
-            y_pos = .35,
-            font_name = "Calibri",
-            font_size = 36,
-            padding = .07,
-            justify = Slide_Item_Text.Justify.Left,
-        };
-
-        slideshow_load_image(^the_slideshow, "first_image", "images/first.jpg");
-
-        slide.items[3] = slideshow_make_item(^the_slideshow);
-        slide.items[3].image = Slide_Item_Image.{
-            name = "first_image",
-            x = .3,
-            y = .4,
-            width = .4,
-        };
-    }
-}
-
 main :: (args: [] cstr) {
     setup_canvas();
     event.init();
 
-    create_dummy_show();
+    the_slideshow = slideshow_make();
+    parse_slideshow(#file_contents "test.prez", ^the_slideshow);
 
     start_loop :: () -> void #foreign "host" "start_loop" ---
     start_loop();
