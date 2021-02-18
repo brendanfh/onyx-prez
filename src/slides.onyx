@@ -35,11 +35,13 @@ Slide_Item :: struct #union {
         Undefined;
         Text;
         Image;
+        Rect;
     }
 
     use base: Slide_Item_Base;
     text  : Slide_Item_Text;
     image : Slide_Item_Image; 
+    rect  : Slide_Item_Rect;
 }
 
 Slide_Item_Base :: struct {
@@ -74,6 +76,15 @@ Slide_Item_Image :: struct {
 
     // Currently the image maintains the original aspect ratio,
     // so the height of the image is automatically determined.
+}
+
+Slide_Item_Rect :: struct {
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Rect };
+
+    color : Color;
+
+    x, y : f32; // Between 0 and 1
+    w, h : f32; // Between 0 and 1
 }
 
 
@@ -222,6 +233,19 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide) {
                 
                 draw_image(canvas, html_image.handle, x, y, w, h);
             }
+        }
+
+        case Rect {
+            use Canvas
+
+            width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
+
+            x := rect.x * width;
+            y := rect.y * height;
+            w := rect.w * width;
+            h := rect.h * height;
+
+            fill_rect(canvas, x, y, w, h, rect.color.r, rect.color.g, rect.color.b, rect.color.a);
         }
     }
 

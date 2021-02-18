@@ -36,7 +36,6 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                 read_byte(^show_reader);
 
                 command_name := read_word(^show_reader, allocator=parse_alloc);
-                printf("Parsing command: %s\n", command_name);
 
                 if command_name == "slide" {
                     prev_slide := ^slideshow.slides[slideshow.slides.count - 1];
@@ -88,6 +87,14 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                     current_slide.items[current_item_idx] = new_slide_image;
                     current_item_idx += 1;
                 }
+                elseif command_name == "rect" {
+                    new_slide_rect := slideshow_make_item(slideshow);
+                    new_slide_rect.kind = Slide_Item.Kind.Rect;
+                    parse_rect_style(^show_reader, ^new_slide_rect.rect, parse_alloc);
+
+                    current_slide.items[current_item_idx] = new_slide_rect;
+                    current_item_idx += 1;
+                }
                 else {
                     printf("******** Unknown command: '%s'.\n", command_name);
                 }
@@ -128,7 +135,6 @@ parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_all
         if style_name == "color" {
             r, g, b := parse_color(reader);
             text_style.color = Color.{ r, g, b };
-            printf("Parsed color: %f %f %f\n", r, g, b);
         }
         elseif style_name == "font_size" {
             text_style.font_size = read_u32(reader);
@@ -150,8 +156,7 @@ parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_all
         elseif style_name == "centered" do text_style.justify = Slide_Item_Text.Justify.Center;
         elseif style_name == "right"    do text_style.justify = Slide_Item_Text.Justify.Right;
         else {
-            use package core { printf as pf }
-            pf("Unknown style option: '%s'\n", style_name);
+            printf("Unknown style option: '%s'\n", style_name);
             advance_line(reader);
             break;
         }
@@ -183,8 +188,44 @@ parse_image_style :: (reader: ^io.Reader, image_style: ^Slide_Item_Image, parse_
             image_style.width = cast(f32) width / 100;
         }
         else {
-            use package core { printf as pf }
-            pf("Unknown style option: '%s'\n", style_name);
+            printf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_rect_style :: (reader: ^io.Reader, rect_style: ^Slide_Item_Rect, parse_alloc := context.allocator) {
+    use io
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "x" {
+            x := read_u32(reader);
+            rect_style.x = cast(f32) x / 100;
+        }
+        elseif style_name == "y" {
+            y := read_u32(reader);
+            rect_style.y = cast(f32) y / 100;
+        }
+        elseif style_name == "w" {
+            w := read_u32(reader);
+            rect_style.w = cast(f32) w / 100;
+        }
+        elseif style_name == "h" {
+            h := read_u32(reader);
+            rect_style.h = cast(f32) h / 100;
+        }
+        elseif style_name == "color" {
+            r, g, b := parse_color(reader);
+            rect_style.color = Color.{ r, g, b };
+        }
+        else {
+            printf("Unknown style option: '%s'\n", style_name);
             advance_line(reader);
             break;
         }

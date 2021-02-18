@@ -15,6 +15,8 @@ DomEventKind :: enum {
     KeyUp      :: 0x05;
 
     Resize     :: 0x06;
+
+    FileDropped :: 0x08;
 }
 
 DomEvent :: struct {
@@ -52,12 +54,19 @@ ResizeEvent :: struct {
     height : u32;
 }
 
+FileDroppedEvent :: struct {
+    use event : DomEvent;
+
+    file_size : u32;
+}
+
 Event :: struct #union {
     use dom : DomEvent;
 
     keyboard : KeyboardEvent;
     mouse    : MouseEvent;
     resize   : ResizeEvent;
+    file     : FileDroppedEvent;
 }
 
 clear_event :: (ev: ^Event) {

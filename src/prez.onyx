@@ -10,40 +10,44 @@ redraw := 0
 poll_events :: () {
     use event.DomEventKind
 
-    redraw = 2;
-
     ev: event.Event;
-    while event.poll(^ev) do switch ev.kind {
-        case Resize {
-            printf("New window size: %i, %i\n", ev.resize.width, ev.resize.height);
+    while event.poll(^ev) {
+        redraw = 1;
 
-            use Canvas
-            set_size(canvas, ev.resize.width, ev.resize.height);
-        }
+        switch ev.kind {
+            case Resize {
+                use Canvas
+                set_size(canvas, ev.resize.width, ev.resize.height);
+            }
 
-        case MouseDown {
-            printf("Mouse down: %i, %i\n", ev.mouse.pos_x, ev.mouse.pos_y);
+            case MouseDown {
+                use event.MouseButton
+                switch ev.mouse.button {
+                    case Right    do slideshow_advance_slide(^the_slideshow, -1);
+                    case #default do slideshow_advance_slide(^the_slideshow, 1);
+                }
+            }
 
-            use event.MouseButton
-            switch ev.mouse.button {
-                case Right    do slideshow_advance_slide(^the_slideshow, -1);
-                case #default do slideshow_advance_slide(^the_slideshow, 1);
+            case KeyDown {
+                switch ev.keyboard.keycode {
+                    case 0x25 do slideshow_advance_slide(^the_slideshow, -1);
+                    case 0x27 do slideshow_advance_slide(^the_slideshow, 1);
+                }
+            }
+
+            case FileDropped {
+                printf("New slideshow was dropped! %i bytes in size\n", ev.file.file_size);
+
+                source := memory.make_slice(u8, ev.file.file_size);
+                defer cfree(source.data);
+
+                copy_presentation_source :: (source: [] u8) -> void #foreign "event" "copy_presentation_source" ---
+                copy_presentation_source(source);
+
+                slideshow_reset(^the_slideshow);
+                parse_slideshow(source, ^the_slideshow);
             }
         }
-
-        case KeyDown {
-            printf("Keydown: %i\n", ev.keyboard.keycode);
-
-            switch ev.keyboard.keycode {
-                case 0x25 do slideshow_advance_slide(^the_slideshow, -1);
-                case 0x27 do slideshow_advance_slide(^the_slideshow, 1);
-            }
-        }
-
-        case #default do redraw = 0;
-
-    } else {
-        redraw = 0;
     }
 }
 
@@ -65,7 +69,7 @@ main :: (args: [] cstr) {
     event.init();
 
     the_slideshow = slideshow_make();
-    parse_slideshow(#file_contents "test.prez", ^the_slideshow);
+    parse_slideshow(#file_contents "initial.prez", ^the_slideshow);
 
     start_loop :: () -> void #foreign "host" "start_loop" ---
     start_loop();

@@ -3,8 +3,14 @@ let wasm_instance;
 let canvasElem;
 let canvasCtx;
 let __loaded_images = [];
+let presentation_source;
 
 const MAGIC_CANVAS_NUMBER = 0x5052455A;
+
+function prez_dragover_handler(ev) {
+    ev.preventDefault();
+    return false;
+}
 
 function push_event_to_buffer(esp, event_size, event_kind, data) {
     let WASM_U32 = new Uint32Array(wasm_instance.exports.memory.buffer);
@@ -62,12 +68,30 @@ let event_import_obj = {
             push_event_to_buffer(esp, event_size, 0x06, [ window.innerWidth, window.innerHeight ]);
         });
 
+        document.getElementById("prez_canvas").addEventListener("drop", async (ev) => {
+            ev.preventDefault();
+
+            presentation_source = await ev.dataTransfer.items[0].getAsFile().arrayBuffer();
+            push_event_to_buffer(esp, event_size, 0x08, [ presentation_source.byteLength ]);
+
+            return false;
+        });
+
         push_event_to_buffer(esp, event_size, 0x06, [ window.innerWidth, window.innerHeight ]);
 
         document.oncontextmenu = (e) => {
             e.preventDefault = true;
             return false;
         };
+    },
+
+    copy_presentation_source(dest_ptr, dest_len) {
+        if (dest_len < presentation_source.byteLength) return;
+
+        let wasm_u8 = new Uint8Array(wasm_instance.exports.memory.buffer);
+        let source  = new Uint8Array(presentation_source);
+
+        wasm_u8.set(source, dest_ptr);
     }
 }
 
