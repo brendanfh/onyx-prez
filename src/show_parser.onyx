@@ -1,5 +1,10 @@
 use package core
 
+ParseContext :: struct {
+    reader: ^io.Reader;
+    variables: ^map.Map(str, u32);
+}
+
 parse_slideshow :: (source: str, slideshow: ^Slideshow) {
     use io
 
@@ -20,6 +25,11 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
     text_styles := map.make(str, Slide_Item_Text, default_text_style);
     defer map.free(^text_styles);
+
+    variables := map.make(str, u32);
+    defer map.free(^variables);
+
+    parse_context := ParseContext.{ ^show_reader, ^variables };
 
     current_slide: ^Slide;
     current_item_idx := 0;
@@ -48,7 +58,7 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                     slide_init(current_slide, background_color=prev_slide.background, item_count = 16);
                 }
                 elseif command_name == "background" {
-                    r, g, b := parse_color(^show_reader);
+                    r, g, b := parse_color(^parse_context);
                     current_slide.background = Color.{ r, g, b };
                 }
                 elseif command_name == "y" {
@@ -62,27 +72,33 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                     }
 
                     text_style := map.get(^text_styles, text_style_name);
+                    
+                    old_y := current_text_style.y_pos;
                     current_text_style = text_style;
+                    current_text_style.y_pos = old_y;
 
-                    parse_text_style(^show_reader, ^current_text_style, parse_alloc);
+                    parse_text_style(^parse_context, ^current_text_style, parse_alloc);
+
+                    // So 'inherit' can be used to copy all existing text styling.
+                    map.put(^text_styles, "inherit", current_text_style);
                 }
                 elseif command_name == "define_text_style" {
                     text_style_name := read_word(^show_reader, numeric_allowed=true);
 
                     current_text_style = default_text_style;
-                    parse_text_style(^show_reader, ^current_text_style, parse_alloc);
+                    parse_text_style(^parse_context, ^current_text_style, parse_alloc);
                     map.put(^text_styles, text_style_name, current_text_style);
                 }
                 elseif command_name == "load_image" {
                     image_name := read_word(^show_reader, numeric_allowed=true);
-                    image_path := parse_string(^show_reader, allocator=parse_alloc);
+                    image_path := parse_string(^parse_context, allocator=parse_alloc);
 
                     slideshow_load_image(slideshow, image_name, image_path);
                 }
                 elseif command_name == "image" {
                     new_slide_image := slideshow_make_item(slideshow);
                     new_slide_image.kind = Slide_Item.Kind.Image;
-                    parse_image_style(^show_reader, ^new_slide_image.image, parse_alloc);
+                    parse_image_style(^parse_context, ^new_slide_image.image, parse_alloc);
 
                     current_slide.items[current_item_idx] = new_slide_image;
                     current_item_idx += 1;
@@ -90,10 +106,16 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                 elseif command_name == "rect" {
                     new_slide_rect := slideshow_make_item(slideshow);
                     new_slide_rect.kind = Slide_Item.Kind.Rect;
-                    parse_rect_style(^show_reader, ^new_slide_rect.rect, parse_alloc);
+                    parse_rect_style(^parse_context, ^new_slide_rect.rect, parse_alloc);
 
                     current_slide.items[current_item_idx] = new_slide_rect;
                     current_item_idx += 1;
+                }
+                elseif command_name == "var" {
+                    var_name := read_word(^show_reader, numeric_allowed=true);
+                    var_value := read_u32(^show_reader);
+
+                    map.put(^variables, var_name, var_value);
                 }
                 else {
                     printf("******** Unknown command: '%s'.\n", command_name);
@@ -116,6 +138,11 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
                 current_slide.items[current_item_idx] = new_slide_text;
                 current_item_idx += 1;
+
+                // @Robustness
+                // This feels like the right amount, but obviously this should change
+                // depending on font size, window height, etc...
+                current_text_style.y_pos += .05;
             }
         }
     }
@@ -124,7 +151,7 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 }
 
 #private_file
-parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_alloc := context.allocator) {
+parse_text_style :: (use pc: ^ParseContext, text_style: ^Slide_Item_Text, parse_alloc := context.allocator) {
     use io
 
     while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
@@ -133,14 +160,14 @@ parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_all
         style_name := read_word(reader, allocator=parse_alloc);
         
         if style_name == "color" {
-            r, g, b := parse_color(reader);
+            r, g, b := parse_color(pc);
             text_style.color = Color.{ r, g, b };
         }
         elseif style_name == "font_size" {
-            text_style.font_size = read_u32(reader);
+            text_style.font_size = parse_numeric_value(pc);
         }
         elseif style_name == "font_name" {
-            text_style.font_name = parse_string(reader);
+            text_style.font_name = parse_string(pc);
         }
         elseif style_name == "font_attr" {
             font_attr := read_word(reader, allocator=parse_alloc);
@@ -149,7 +176,7 @@ parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_all
             elseif font_attr == "italic" do text_style.font_attr |= Slide_Item_Text.FontAttributes.Italic;
         }
         elseif style_name == "padding" {
-            padding := read_u32(reader);
+            padding := parse_numeric_value(pc);
             text_style.padding = cast(f32) padding / 100;
         }
         elseif style_name == "left"     do text_style.justify = Slide_Item_Text.Justify.Left;
@@ -164,7 +191,7 @@ parse_text_style :: (reader: ^io.Reader, text_style: ^Slide_Item_Text, parse_all
 }
 
 #private_file
-parse_image_style :: (reader: ^io.Reader, image_style: ^Slide_Item_Image, parse_alloc := context.allocator) {
+parse_image_style :: (use pc: ^ParseContext, image_style: ^Slide_Item_Image, parse_alloc := context.allocator) {
     use io
 
     image_name := read_word(reader, numeric_allowed=true);
@@ -176,15 +203,15 @@ parse_image_style :: (reader: ^io.Reader, image_style: ^Slide_Item_Image, parse_
         style_name := read_word(reader, allocator=parse_alloc);
         
         if style_name == "x" {
-            x := read_u32(reader);
+            x := parse_numeric_value(pc);
             image_style.x = cast(f32) x / 100;
         }
         elseif style_name == "y" {
-            y := read_u32(reader);
+            y := parse_numeric_value(pc);
             image_style.y = cast(f32) y / 100;
         }
         elseif style_name == "width" {
-            width := read_u32(reader);
+            width := parse_numeric_value(pc);
             image_style.width = cast(f32) width / 100;
         }
         else {
@@ -196,7 +223,7 @@ parse_image_style :: (reader: ^io.Reader, image_style: ^Slide_Item_Image, parse_
 }
 
 #private_file
-parse_rect_style :: (reader: ^io.Reader, rect_style: ^Slide_Item_Rect, parse_alloc := context.allocator) {
+parse_rect_style :: (use pc: ^ParseContext, rect_style: ^Slide_Item_Rect, parse_alloc := context.allocator) {
     use io
 
     while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
@@ -205,23 +232,23 @@ parse_rect_style :: (reader: ^io.Reader, rect_style: ^Slide_Item_Rect, parse_all
         style_name := read_word(reader, allocator=parse_alloc);
         
         if style_name == "x" {
-            x := read_u32(reader);
+            x := parse_numeric_value(pc);
             rect_style.x = cast(f32) x / 100;
         }
         elseif style_name == "y" {
-            y := read_u32(reader);
+            y := parse_numeric_value(pc);
             rect_style.y = cast(f32) y / 100;
         }
         elseif style_name == "w" {
-            w := read_u32(reader);
+            w := parse_numeric_value(pc);
             rect_style.w = cast(f32) w / 100;
         }
         elseif style_name == "h" {
-            h := read_u32(reader);
+            h := parse_numeric_value(pc);
             rect_style.h = cast(f32) h / 100;
         }
         elseif style_name == "color" {
-            r, g, b := parse_color(reader);
+            r, g, b := parse_color(pc);
             rect_style.color = Color.{ r, g, b };
         }
         else {
@@ -233,10 +260,34 @@ parse_rect_style :: (reader: ^io.Reader, rect_style: ^Slide_Item_Rect, parse_all
 }
 
 #private_file
-parse_color :: (reader: ^io.Reader) -> (f32, f32, f32) {
-    r := io.read_u32(reader);
-    g := io.read_u32(reader);
-    b := io.read_u32(reader);
+parse_numeric_value :: (use pc: ^ParseContext) -> u32 {
+    use io
+
+    skip_whitespace(reader);
+    _, next_byte := stream_peek_byte(reader.stream);
+    if next_byte == #char "$" {
+        io.read_byte(reader);
+        var_name := read_word(reader, numeric_allowed=true);
+
+        value := 0;
+
+        if map.has(variables, var_name) {
+            value = map.get(variables, var_name);
+        } else {
+            printf("Variable '%s' was never defined!\n", var_name);
+        }
+
+        return value;
+    }
+
+    return read_u32(reader);
+}
+
+#private_file
+parse_color :: (use pc: ^ParseContext) -> (f32, f32, f32) {
+    r := parse_numeric_value(pc);
+    g := parse_numeric_value(pc);
+    b := parse_numeric_value(pc);
 
     fr := cast(f32) r / 255;
     fg := cast(f32) g / 255;
@@ -246,7 +297,7 @@ parse_color :: (reader: ^io.Reader) -> (f32, f32, f32) {
 }
 
 #private_file
-parse_string :: (reader: ^io.Reader, allocator := context.allocator) -> str {
+parse_string :: (use pc: ^ParseContext, allocator := context.allocator) -> str {
     use io
 
     // @Cleanup

@@ -1,11 +1,18 @@
 
-[define_text_style normal color 255 255 255 font_size 40 font_name "Arial" left padding 10]
-[define_text_style title color 255 255 255 font_attr bold font_size 72 font_name "Arial" centered]
-[define_text_style subtitle color 255 255 255 font_attr italic font_size 72 font_name "Arial" centered]
-[define_text_style header color 255 255 255 font_attr bold font_size 72 font_name "Arial" left padding 10]
+[var tbright 236]
+[var bbright 20]
+
+[define_text_style normal color   $tbright $tbright $tbright font_size 40 font_name "Arial" left padding 10]
+[define_text_style title color    $tbright $tbright $tbright font_attr bold font_size 72 font_name "Arial" centered]
+[define_text_style subtitle color $tbright $tbright $tbright font_attr italic font_size 72 font_name "Arial" centered]
+[define_text_style header color   $tbright $tbright $tbright font_attr bold font_size 72 font_name "Arial" left padding 10]
+
+[define_text_style hyperlink color 100 100 255 font_attr italic font_size 40 font_name "Arial" left padding 10]
+
+[load_image wasm_logo "https://webassembly.org/css/webassembly.svg"]
 
 # ---------------------------------------------
-[slide] [background 30 30 30]
+[slide] [background $bbright $bbright $bbright]
 
 [rect color 0 0 0 x 0 w 100 y 40 h 20] 
 
@@ -21,21 +28,59 @@
 # Introduce what Onyx is, the design goals, the improvements over C, etc.
 
 [slide]
-[rect color 0 0 0 x 0 w 100 y 5 h 10]
+[rect color 40 40 40 x 8 w 84  y 0 h 100]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] What is Onyx?
 
 [text_style normal]
-[y 20] ▪ New programming language for WebAssembly
-[y 25] ▪ No dependence on other langauges
-[y 30] ▪ Fast compilation by design
-[y 35] ▪ Easy to write by design
+[y 22] New programming language for WebAssembly developed entirely by me.
 
+[y 34] Some important design features:
+[text_style inherit padding 15]
+▪ No dependence on other langauges
+▪ Fast compilation
+▪ Easy to write
+▪ Easy to read
+
+
+# ---------------------------------------------
+# BRIEFLY introduce WASM and its capabilities
 
 [slide]
-[rect color 0 0 0 x 0 w 100 y 5 h 10]
+[rect color 40 40 40 x 8 w 84  y 0 h 100]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Brief aside: WebAssembly
+
+[text_style normal]
+[y 20] WebAssembly (WASM for short) is a new execution platform for the web.
+
+[y 30] It defines:
+[text_style inherit padding 15]
+▪ A Virtual Instruction Set Architecture
+▪ Linear Memory Model
+▪ Arbitrary imports
+▪ Safe indirect function calls
+
+[text_style normal centered]
+[y 75] For more information, you can check out,
+[text_style hyperlink centered]
+https://webassembly.org/
+
+[image wasm_logo x 65 y 34 width 20]
+
+
+# ---------------------------------------------
+# High-level language features and design that make it super cozy to program in.
+
+[slide]
+[rect color 40 40 40 x 8 w 84  y 0 h 100]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] Design of Onyx
 
-[text_style normal]
-[y 20] 
+[text_style normal font_attr italic font_size 44]
+[y 20] Declare anywhere.
+Polymorphic procedures and structures.
+Package system.

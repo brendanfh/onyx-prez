@@ -92,12 +92,18 @@ Slide_Item_Rect :: struct {
 slideshow_make :: (allocator := context.allocator) -> Slideshow {
     slideshow: Slideshow;
     slideshow_init(^slideshow, allocator);
+
+    // @Reconsider: By not reseting the current_slide to 0 in the init function,
+    // the current slide can persist over resets. This makes it easier to be
+    // editing a slideshow because you will remain on the same slide, provided
+    // no other slides were added before the slide you're working on.
+    slideshow.current_slide = 0;
+
     return slideshow;
 }
 
 slideshow_init :: (use s: ^Slideshow, allocator := context.allocator) {
     title = "Untitled Slideshow";
-    current_slide = 0;
 
     arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
     array.init(^slides, 4);
