@@ -242,6 +242,14 @@ parse_image_style :: (use pc: ^ParseContext, image_style: ^Slide_Item_Image, par
             width := parse_numeric_value(pc);
             image_style.width = cast(f32) width / 100;
         }
+        elseif style_name == "border_width" {
+            width := parse_numeric_value(pc);
+            image_style.border_width = cast(f32) width / 100;
+        }
+        elseif style_name == "border_color" {
+            r, g, b := parse_color(pc);
+            image_style.border_color = Color.{ r, g, b };
+        }
         else {
             printf("Unknown style option: '%s'\n", style_name);
             advance_line(reader);

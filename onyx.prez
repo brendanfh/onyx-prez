@@ -10,6 +10,7 @@
 [define_text_style hyperlink color 100 100 255 font_attr italic font_size 40 font_name "Arial" left padding 10]
 [define_text_style code color $tbright $tbright $tbright font_size 40 font_name "monospace" left padding 20]
 
+[load_image onyx_example "https://brendanfh.com/files/onyx_prez/onyx_example.png"]
 [load_image wasm_logo "https://webassembly.org/css/webassembly.svg"]
 
 # ---------------------------------------------
@@ -22,7 +23,7 @@
 [y 50] Onyx
 
 [text_style normal font_attr italic font_size 36 centered]
-[y 55] A simple, yet powerful programming language for WebAssembly.
+[y 56] A simple, yet powerful programming language for WebAssembly.
 
 
 
@@ -40,10 +41,13 @@
 
 [y 34] Some important design features:
 [text_style inherit padding 15]
-▪ No dependence on other languages
+▪ Strongly typed
 ▪ Fast compilation
 ▪ Easy to write
 ▪ Easy to read
+
+[image onyx_example x 50 y 30 width 35
+    border_color 30 30 30 border_width 1]
 
 
 # ---------------------------------------------
@@ -66,7 +70,7 @@
 ▪ Safe indirect function calls
 
 [text_style normal]
-[y 60] Multiple environments:
+[y 60] Multiple embeddings:
 [text_style inherit padding 15]
 ▪ Web browsers
 ▪ WebAssembly Systems Interface (WASI)
@@ -76,7 +80,8 @@
 [text_style hyperlink centered]
 https://webassembly.org/
 
-[image wasm_logo x 65 y 34 width 20]
+[image wasm_logo x 65 y 34 width 20
+    border_width 2 border_color 20 20 20]
 
 
 # ---------------------------------------------
@@ -86,7 +91,10 @@ https://webassembly.org/
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
-[y 12] High-Level Design of Onyx
+[y 12] High Level Design
+
+[text_style normal]
+[y 20] Started vaguely at C, because C did many things right.
 
 [text_style normal font_attr italic font_size 44]
 [y 30] Declare anywhere
@@ -126,3 +134,55 @@ https://webassembly.org/
  5  main :: (args: [] cstr) {
  6      println("Hello, World!");
  7  }
+
+
+# ---------------------------------------------
+# Compiler internals
+#   * Entity priority queue
+#   * Running engine
+
+[slide]
+[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Compiler Internal Design
+
+# Normal symbol tables are not powerful enough so an out
+# of order processing scheme such as a priority queue is
+# needed
+
+[text_style normal font_attr italic]
+[y 20] Compilation engine
+
+[text_style normal padding 15]
+1. The parser generates a set of entities for a file.
+2. These entities are added to a priority queue.
+3. Entities are processed one-by-one until compilation completes or fails.
+
+[text_style normal font_attr italic]
+[y 45] Entity
+
+[text_style normal padding 15]
+▪ Abstract syntax tree node
+▪ Metadata about the node (scope, package, etc.)
+▪ State and type for ordering in the queue
+
+
+
+# ---------------------------------------------
+# Projects done in Onyx
+
+[slide]
+[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] What has been made in Onyx
+
+[text_style normal]
+[y 20]
+▪ Advent of Code 2020
+▪ MNIST Digit Recognizer
+▪ Efficient WebGL Renderer
+
+[text_style inherit font_attr italic]
+▪ This presentation site
