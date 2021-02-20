@@ -54,7 +54,15 @@ poll_events :: () {
 loop :: () -> void #export "loop" {
     poll_events();
 
-    if redraw > 0 {
+    slideshow_update_animation(^the_slideshow);
+
+    if the_slideshow.current_animation != null {
+        Canvas.clear(canvas, 0, 0, 0, 1);
+        the_slideshow.current_animation->render(^the_slideshow);
+    }
+    elseif redraw > 0 {
+        Canvas.clear(canvas, 0, 0, 0, 1);
+
         current_slide := slideshow_get_current_slide(^the_slideshow);
         slide_render(current_slide);
 

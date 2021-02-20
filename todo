@@ -1,5 +1,7 @@
 [X] Image borders
 [X] Fixed aspect ratio slides
 
-[ ] Slide animation: Slide from Right
-[ ] Slide animatoin: Fade
+[X] Slide animation: Slide from Right
+[X] Slide animation: Fade
+
+[ ] Slide animation config in text format

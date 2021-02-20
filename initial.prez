@@ -1,4 +1,8 @@
-[aspect_ratio 4 3]
+# This is the default "presentation" that is displayed when
+# the page loads. This file is baked into the WASM binary,
+# so any changes to this require the binary the be recompiled.
+
+[aspect_ratio 16 10]
 
 [slide] [background 60 60 60]
 [text_style inherit font_name "monospace" font_size 48 font_attr bold centered]

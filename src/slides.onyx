@@ -20,6 +20,7 @@ Slideshow :: struct {
     slides : [..] Slide;
 
     current_slide : i32;
+    current_animation : ^Slide_Animation;
 
     image_map : map.Map(str, HTML_Image);
 }
@@ -27,6 +28,8 @@ Slideshow :: struct {
 Slide :: struct {
     background   : Color;
     aspect_ratio : f32 = 1;
+
+    animation_generator : (i32, i32) -> ^Slide_Animation;
 
     items : [] ^Slide_Item;
 }
@@ -131,8 +134,18 @@ slideshow_get_current_slide :: (use s: ^Slideshow) -> ^Slide {
 }
 
 slideshow_advance_slide :: (use s: ^Slideshow, count := 1) {
+    if current_animation != null do return;
+
+    old_slide := current_slide;
+    
     current_slide += count;
     current_slide = math.clamp(current_slide, 0, slides.count - 1); 
+
+    if old_slide != current_slide {
+        if slides[current_slide].animation_generator == null_proc do return;
+
+        current_animation = slides[current_slide].animation_generator(old_slide, current_slide);
+    }
 }
 
 slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
@@ -169,9 +182,23 @@ slideshow_load_image :: (use s: ^Slideshow, image_name: str, image_path: str) ->
     return image;
 }
 
+slideshow_update_animation :: (use s: ^Slideshow) {
+    if current_animation == null do return;
+
+    if current_animation->update() {
+        cfree(current_animation);
+        current_animation = null;
+    }
+}
+
+
+
+
 slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4, aspect := 1.0f) {
     background = background_color;
     aspect_ratio = aspect;
+
+    animation_generator = fade_animation_make;
 
     if item_count > 0 {
         items = memory.make_slice(#type ^Slide_Item, item_count);
@@ -183,13 +210,6 @@ slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_c
 }
 
 slide_render :: (use slide: ^Slide) {
-    // I would like to alias Canvas to C here, but right now
-    // this does not work:
-    //
-    //     C :: Canvas
-    //
-    Canvas.clear(canvas, 0, 0, 0, 1);
-
     canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
     width, height := 0.0f, 0.0f;
     x, y := 0.0f, 0.0f;
@@ -206,18 +226,21 @@ slide_render :: (use slide: ^Slide) {
         y      = (canvas_height - height) / 2;
     }
 
-    transform := f32.[ 1, 0, 0, 1, x, y ];
-    identity  := f32.[ 1, 0, 0, 1, 0, 0 ];
+    old_transform : [6] f32;
+    Canvas.get_transform(canvas, old_transform);
+
+    transform := f32.[ 1, 0, 0, 1,
+                       x + old_transform[4],
+                       y + old_transform[5] ];
 
     Canvas.set_transform(canvas, transform);
-    defer Canvas.set_transform(canvas, identity);
+    defer Canvas.set_transform(canvas, old_transform);
 
     Canvas.fill_rect(canvas, 0, 0, width, height, background.r, background.g, background.b, background.a);
     for item: items do if item != null do slide_item_render(item, slide, width, height);
 }
 
-slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide,
-                      width: f32, height: f32) {
+slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide, width: f32, height: f32) {
     use Canvas
     use Slide_Item.Kind
 
@@ -238,15 +261,11 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide,
                 }
 
                 case Left {
-                    use Canvas
-
                     x, y := text.padding * width, text.y_pos * height;
                     fill_text(canvas, text.text, x, y);
                 }
 
                 case Right {
-                    use Canvas
-
                     font_metrics: TextMetrics;
                     measure_text(canvas, text.text, ^font_metrics);
 
@@ -257,8 +276,6 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide,
         }
 
         case Image {
-            use Canvas
-
             if html_image := map.get(^the_slideshow.image_map, image.name); html_image.handle != -1 {
                 // @Speed: There is a much better way of doing this...
                 // @Robustness: Currently, because HTML images are asynchronously loaded,
@@ -287,8 +304,6 @@ slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide,
         }
 
         case Rect {
-            use Canvas
-
             x := rect.x * width;
             y := rect.y * height;
             w := rect.w * width;
@@ -331,3 +346,112 @@ aprintf :: (allocator: Allocator, format: str, va: ...) -> str {
     output := string.alloc_copy(formatted, allocator = allocator);
     return output;
 }
+
+
+
+
+
+//
+// Slide Animations
+//
+
+Slide_Animation :: struct {
+    render : (anim: ^Slide_Animation, slideshow: ^Slideshow) -> void;
+    update : (anim: ^Slide_Animation) -> bool;
+
+    source_slide : i32 = -1;
+    target_slide : i32 = -1;
+}
+
+Slide_Animation_Swipe :: struct {
+    use base := Slide_Animation.{
+        update = swipe_animation_update,
+        render = swipe_animation_render
+    };
+
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+}
+
+swipe_animation_make :: (source := -1, target := -1) -> ^Slide_Animation {
+    anim := new(Slide_Animation_Swipe);
+    *anim = Slide_Animation_Swipe.{};
+
+    anim.source_slide = source;
+    anim.target_slide = target;
+
+    return anim;
+}
+
+#private_file
+swipe_animation_update :: (use anim: ^Slide_Animation_Swipe) -> bool {
+    t += dt;
+    return t >= 1;
+}
+
+#private_file
+swipe_animation_render :: (use anim: ^Slide_Animation_Swipe, slideshow: ^Slideshow) {
+    source := ^slideshow.slides[source_slide];    
+    target := ^slideshow.slides[target_slide];
+
+    canvas_width := cast(f32) Canvas.get_width(canvas);
+
+    multiplier := -1.0f;
+    if target_slide < source_slide do multiplier = 1;
+
+    offset := (1 - math.pow(1 - t, 3)) * canvas_width * multiplier;
+    trans := f32.[ 1, 0, 0, 1, offset, 0 ];
+    Canvas.set_transform(canvas, trans);
+    slide_render(source);
+
+    trans[4] -= canvas_width * multiplier;
+    Canvas.set_transform(canvas, trans);
+    slide_render(target);
+}
+
+Slide_Animation_Fade :: struct {
+    use base := Slide_Animation.{
+        update = fade_animation_update,
+        render = fade_animation_render
+    };
+
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+}
+
+fade_animation_make :: (source := -1, target := -1) -> ^Slide_Animation {
+    anim := new(Slide_Animation_Fade);
+    *anim = Slide_Animation_Fade.{};
+
+    anim.source_slide = source;
+    anim.target_slide = target;
+
+    return anim;
+}
+
+#private_file
+fade_animation_update :: (use anim: ^Slide_Animation_Fade) -> bool {
+    t += dt;
+    return t >= 1;
+}
+
+#private_file
+fade_animation_render :: (use anim: ^Slide_Animation_Fade, slideshow: ^Slideshow) {
+    source := ^slideshow.slides[source_slide];    
+    target := ^slideshow.slides[target_slide];
+
+    canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+
+    if t < 0.5 {
+        slide_render(source);
+
+        Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                         0, 0, 0, t * 2);
+    } else {
+        slide_render(target);
+
+        Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                         0, 0, 0, (1 - t) * 2);
+    }
+}
+
