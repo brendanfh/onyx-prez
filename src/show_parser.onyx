@@ -25,15 +25,21 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
     text_styles := map.make(str, Slide_Item_Text, default_text_style);
     defer map.free(^text_styles);
+    map.put(^text_styles, "inherit", default_text_style);
 
     variables := map.make(str, u32);
     defer map.free(^variables);
 
     parse_context := ParseContext.{ ^show_reader, ^variables };
 
-    current_slide: ^Slide;
-    current_item_idx := 0;
+    current_slide: ^Slide = null;
     current_text_style: Slide_Item_Text;
+
+    current_slide_items := array.make(#type ^Slide_Item, 8);
+    defer array.free(^current_slide_items);
+
+    aspect_ratio := 1.0f;
+    y_increment := 0.05f;
 
     while !stream_end_of_file(^show_stream) {
         skip_whitespace(^show_reader); 
@@ -48,22 +54,38 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                 command_name := read_word(^show_reader, allocator=parse_alloc);
 
                 if command_name == "slide" {
-                    prev_slide := ^slideshow.slides[slideshow.slides.count - 1];
-                    current_slide = slideshow_insert_slide(slideshow);
-                    current_item_idx = 0;
+                    background_color := Color.{ 0, 0, 0 };
 
-                    // @Robustness @Incomplete: Currently, there is a fixed number of items
-                    // on EVERY slide, which both wastes memory for small slides, and limits
-                    // how many things can be in a slide.
-                    slide_init(current_slide, background_color=prev_slide.background, item_count = 16);
+                    if current_slide != null {
+                        background_color = current_slide.background; 
+                        flush_items(current_slide, ^current_slide_items);
+                    }
+
+                    current_slide = slideshow_insert_slide(slideshow);
+
+                    // @NOTE: item_count is 0 because the items will be allocated and inserted later
+                    slide_init(current_slide,
+                        item_count = 0,
+                        background_color = background_color,
+                        aspect = aspect_ratio);
                 }
                 elseif command_name == "background" {
                     r, g, b := parse_color(^parse_context);
                     current_slide.background = Color.{ r, g, b };
                 }
                 elseif command_name == "y" {
-                    y := read_u32(^show_reader);
+                    y := parse_numeric_value(^parse_context);
                     current_text_style.y_pos = cast(f32) y / 100;
+                }
+                elseif command_name == "y_inc" {
+                    y := parse_numeric_value(^parse_context);
+                    y_increment = cast(f32) y / 100;
+                }
+                elseif command_name == "aspect_ratio" {
+                    w := parse_numeric_value(^parse_context);
+                    h := parse_numeric_value(^parse_context);
+
+                    aspect_ratio = cast(f32) w / cast(f32) h;
                 }
                 elseif command_name == "text_style" {
                     text_style_name := read_word(^show_reader, numeric_allowed=true);
@@ -100,16 +122,14 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
                     new_slide_image.kind = Slide_Item.Kind.Image;
                     parse_image_style(^parse_context, ^new_slide_image.image, parse_alloc);
 
-                    current_slide.items[current_item_idx] = new_slide_image;
-                    current_item_idx += 1;
+                    array.push(^current_slide_items, new_slide_image);
                 }
                 elseif command_name == "rect" {
                     new_slide_rect := slideshow_make_item(slideshow);
                     new_slide_rect.kind = Slide_Item.Kind.Rect;
                     parse_rect_style(^parse_context, ^new_slide_rect.rect, parse_alloc);
 
-                    current_slide.items[current_item_idx] = new_slide_rect;
-                    current_item_idx += 1;
+                    array.push(^current_slide_items, new_slide_rect);
                 }
                 elseif command_name == "var" {
                     var_name := read_word(^show_reader, numeric_allowed=true);
@@ -130,24 +150,32 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
             case #default {
                 // @Memory
-                text := read_line(^show_reader);
+                text_allocator := alloc.arena.make_allocator(^slideshow.arena);
+                text := read_line(^show_reader, text_allocator);
 
                 new_slide_text := slideshow_make_item(slideshow);
                 new_slide_text.text = current_text_style;
                 new_slide_text.text.text = text; // Oofta...
 
-                current_slide.items[current_item_idx] = new_slide_text;
-                current_item_idx += 1;
+                array.push(^current_slide_items, new_slide_text);
 
-                // @Robustness
-                // This feels like the right amount, but obviously this should change
-                // depending on font size, window height, etc...
-                current_text_style.y_pos += .05;
+                current_text_style.y_pos += y_increment;
             }
         }
     }
 
+    flush_items(current_slide, ^current_slide_items);
+
     printf("Total slide count: %i\n", slideshow.slides.count);
+
+    flush_items :: (slide: ^Slide, items: ^[..] ^Slide_Item) {
+        slide.items = memory.make_slice(#type ^Slide_Item, items.count);
+        for idx: items.count {
+            slide.items[idx] = items.data[idx];
+        }
+
+        array.clear(items);
+    }
 }
 
 #private_file

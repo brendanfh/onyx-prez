@@ -60,7 +60,7 @@
 
 [y 30] It defines:
 [text_style inherit padding 15]
-▪ A Virtual Instruction Set Architecture
+▪ Virtual Instruction Set Architecture
 ▪ Linear Memory Model
 ▪ Arbitrary imports
 ▪ Safe indirect function calls

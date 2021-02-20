@@ -25,7 +25,8 @@ Slideshow :: struct {
 }
 
 Slide :: struct {
-    background: Color;
+    background   : Color;
+    aspect_ratio : f32 = 1;
 
     items : [] ^Slide_Item;
 }
@@ -51,7 +52,7 @@ Slide_Item_Base :: struct {
 Slide_Item_Text :: struct {
     use base := Slide_Item_Base.{ Slide_Item.Kind.Text };
 
-    color : Color = Color.{ 1, 1, 1 };
+    color := Color.{ 1, 1, 1 };
 
     font_name : str;
     font_size : u32;
@@ -163,11 +164,17 @@ slideshow_load_image :: (use s: ^Slideshow, image_name: str, image_path: str) ->
     return image;
 }
 
-slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4) {
+slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4, aspect := 1.0f) {
     background = background_color;
+    aspect_ratio = aspect;
 
-    items = memory.make_slice(#type ^Slide_Item, item_count);
-    memory.set(items.data, 0, items.count * sizeof ^Slide_Item);
+    if item_count > 0 {
+        items = memory.make_slice(#type ^Slide_Item, item_count);
+        memory.set(items.data, 0, items.count * sizeof ^Slide_Item);
+
+    } else {
+        items.count = 0;
+    }
 }
 
 slide_render :: (use slide: ^Slide) {
