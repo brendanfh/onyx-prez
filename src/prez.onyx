@@ -58,6 +58,9 @@ loop :: () -> void #export "loop" {
     slideshow_update_animation(^the_slideshow);
 
     if the_slideshow.current_animation != null {
+        identity := f32.[ 1, 0, 0, 1, 0, 0 ];
+        Canvas.set_transform(canvas, identity);
+
         Canvas.clear(canvas, 0, 0, 0, 1);
         the_slideshow.current_animation->render(^the_slideshow);
     }
