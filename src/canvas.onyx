@@ -18,6 +18,9 @@ Canvas :: struct {
 
     set_transform :: (handle: Handle, matrix: TransformMatrix) -> void #foreign "canvas" "setTransform" --- 
     get_transform :: (handle: Handle, out_matrix: TransformMatrix) -> void #foreign "canvas" "getTransform" ---
+    
+    set_scissor   :: (handle: Handle, x: f32, y: f32, w: f32, h: f32) -> void #foreign "canvas" "setScissor" ---
+    clear_scissor :: (handle: Handle) -> void #foreign "canvas" "clearScissor" ---
 
     TextMetrics :: struct {
         width : f32;

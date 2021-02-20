@@ -6,7 +6,15 @@
 
 [var back_r 20]
 [var back_g 20]
-[var back_b 40]
+[var back_b 30]
+
+[var cover_r 30]
+[var cover_g 30]
+[var cover_b 40]
+
+[var image_border_r 20]
+[var image_border_g 20]
+[var image_border_b 30]
 
 [define_text_style normal color   $text_r $text_g $text_b font_size 40 font_name "Arial" left padding 10]
 [define_text_style title color    $text_r $text_g $text_b font_attr bold font_size 72 font_name "Arial" centered]
@@ -23,8 +31,8 @@
 [slide] [background $back_r $back_g $back_b]
 [animation fade]
 
-[rect color 40 40 40 x 0 w 100 y 35 h 30]
-[rect color 0   0  0 x 0 w 100 y 40 h 20] 
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
 
 [text_style title font_size 96]
 [y 50] Onyx
@@ -39,13 +47,13 @@
 
 [slide]
 [animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] What is Onyx?
 
 [text_style normal]
-[y 22] New programming language for WebAssembly developed entirely by me.
+[y 22] New programming language for WebAssembly designed and developed by me.
 
 [y 34] Some important design features:
 [text_style inherit padding 15]
@@ -55,7 +63,8 @@
 ▪ Easy to read
 
 [image onyx_example x 50 y 30 width 35
-    border_color 30 30 30 border_width 2]
+    border_color $image_border_r $image_border_g $image_border_b
+    border_width 2]
 
 
 # ---------------------------------------------
@@ -63,7 +72,7 @@
 
 [slide]
 [animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] Brief aside of WebAssembly
@@ -75,8 +84,8 @@
 [text_style inherit padding 15]
 ▪ Virtual Instruction Set Architecture
 ▪ Linear Memory Model
-▪ Arbitrary imports
 ▪ Safe indirect function calls
+▪ Arbitrary imports
 
 [text_style normal]
 [y 60] Multiple embeddings:
@@ -90,7 +99,8 @@
 https://webassembly.org/
 
 [image wasm_logo x 65 y 34 width 20
-    border_width 20 border_color 20 20 20]
+    border_color $image_border_r $image_border_g $image_border_b
+    border_width 10]
 
 
 # ---------------------------------------------
@@ -98,7 +108,7 @@ https://webassembly.org/
 
 [slide]
 [animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] High Level Design
@@ -128,8 +138,8 @@ https://webassembly.org/
 # Hello, World!
 
 [slide]
-[animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[animation wiper]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] Obligatory 'Hello, World!' in Onyx
@@ -146,6 +156,31 @@ https://webassembly.org/
  6      println("Hello, World!");
  7  }
 
+# ---------------------------------------------
+# Hello, World!
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Obligatory 'Hello, World!' in Onyx
+
+[rect color 10 10 10 x 15 y 34 w 70 h 40]
+
+[text_style code]
+[y 40]
+ 1  #load "core/std"
+ 2
+ 3  use package core
+ 4
+ 5  main :: (args: [] cstr) {
+ 6      println("Hello, World!");
+ 7  }
+
+ [text_style normal centered font_attr italic]
+ [y 80] Not the simplest 'Hello, World!', but this is not meant to be a simple language.
+
 
 # ---------------------------------------------
 # Compiler internals
@@ -154,7 +189,7 @@ https://webassembly.org/
 
 [slide]
 [animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] Compiler Internal Design
@@ -186,7 +221,7 @@ https://webassembly.org/
 
 [slide]
 [animation swipe]
-[rect color 40 40 40 x 8 w 84  y 5 h 95]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
 [y 12] What has been made in Onyx

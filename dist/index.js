@@ -161,6 +161,18 @@ let canvas_import_obj = {
         data_view.setFloat32(20, transform.f, true);
     },
 
+    setScissor(canvas, x, y, w, h) {
+        canvasCtx.save();
+
+        canvasCtx.beginPath();
+        canvasCtx.rect(x, y, w, h);
+        canvasCtx.clip();
+    },
+
+    clearScissor(canvas) {
+        canvasCtx.restore();
+    },
+
     measureText(canvas, text_ptr, text_len, measure_ptr) {
         const data = new Uint8Array(wasm_instance.exports.memory.buffer, text_ptr, text_len);
         const text = new TextDecoder().decode(data);

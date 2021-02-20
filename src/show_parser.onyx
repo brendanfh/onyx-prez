@@ -30,10 +30,11 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
     variables := map.make(str, u32);
     defer map.free(^variables);
 
-    animations := map.make(str, #type (Allocator) -> ^Slide_Animation, default=null_proc, hash_count=2);
+    animations := map.make(str, #type (Allocator) -> ^Slide_Animation, default=null_proc, hash_count=4);
     defer map.free(^animations);
     map.put(^animations, "swipe", Slide_Animation_Swipe.make);
     map.put(^animations, "fade",  Slide_Animation_Fade.make);
+    map.put(^animations, "wiper", Slide_Animation_Wiper.make);
 
     parse_context := ParseContext.{ ^show_reader, ^variables };
 

@@ -372,9 +372,9 @@ Slide_Animation :: struct {
 
 Slide_Animation_Swipe :: struct {
     use base := Slide_Animation.{
-        init   = swipe_animation_init,
-        update = swipe_animation_update,
-        render = swipe_animation_render
+        init   = init,
+        update = update,
+        render = render
     };
 
     t  : f32 = 0;
@@ -387,47 +387,45 @@ Slide_Animation_Swipe :: struct {
         
         return anim;
     }
+
+    init :: (use anim: ^Slide_Animation_Swipe, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
+
+        t = 0;
+    }
+
+    update :: (use anim: ^Slide_Animation_Swipe) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Swipe, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width := cast(f32) Canvas.get_width(canvas);
+
+        multiplier := -1.0f;
+        if target_slide < source_slide do multiplier = 1;
+
+        offset := (1 - math.pow(1 - t, 3)) * canvas_width * multiplier;
+        trans := f32.[ 1, 0, 0, 1, offset, 0 ];
+        Canvas.set_transform(canvas, trans);
+        slide_render(source);
+
+        trans[4] -= canvas_width * multiplier;
+        Canvas.set_transform(canvas, trans);
+        slide_render(target);
+    }
 }
 
-#private_file
-swipe_animation_init :: (use anim: ^Slide_Animation_Swipe, source := -1, target := -1) {
-    source_slide = source;
-    target_slide = target;
-
-    t = 0;
-}
-
-#private_file
-swipe_animation_update :: (use anim: ^Slide_Animation_Swipe) -> bool {
-    t += dt;
-    return t >= 1;
-}
-
-#private_file
-swipe_animation_render :: (use anim: ^Slide_Animation_Swipe, slideshow: ^Slideshow) {
-    source := ^slideshow.slides[source_slide];    
-    target := ^slideshow.slides[target_slide];
-
-    canvas_width := cast(f32) Canvas.get_width(canvas);
-
-    multiplier := -1.0f;
-    if target_slide < source_slide do multiplier = 1;
-
-    offset := (1 - math.pow(1 - t, 3)) * canvas_width * multiplier;
-    trans := f32.[ 1, 0, 0, 1, offset, 0 ];
-    Canvas.set_transform(canvas, trans);
-    slide_render(source);
-
-    trans[4] -= canvas_width * multiplier;
-    Canvas.set_transform(canvas, trans);
-    slide_render(target);
-}
 
 Slide_Animation_Fade :: struct {
     use base := Slide_Animation.{
-        init   = fade_animation_init,
-        update = fade_animation_update,
-        render = fade_animation_render
+        init   = init,
+        update = update,
+        render = render
     };
 
     t  : f32 = 0;
@@ -440,39 +438,92 @@ Slide_Animation_Fade :: struct {
         
         return anim;
     }
+
+    init :: (use anim: ^Slide_Animation_Fade, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
+
+        t = 0;
+    }
+
+    update :: (use anim: ^Slide_Animation_Fade) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Fade, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+
+        if t < 0.5 {
+            slide_render(source);
+
+            Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                             0, 0, 0, t * 2);
+        } else {
+            slide_render(target);
+
+            Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                             0, 0, 0, (1 - t) * 2);
+        }
+    }
 }
 
-#private_file
-fade_animation_init :: (use anim: ^Slide_Animation_Fade, source := -1, target := -1) {
-    source_slide = source;
-    target_slide = target;
+Slide_Animation_Wiper :: struct {
+    use base := Slide_Animation.{
+        init   = init,
+        update = update,
+        render = render
+    };
 
-    t = 0;
-}
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+    
+    draw_line := false;
 
-#private_file
-fade_animation_update :: (use anim: ^Slide_Animation_Fade) -> bool {
-    t += dt;
-    return t >= 1;
-}
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Wiper {
+        anim := new(Slide_Animation_Wiper, allocator=allocator);
+        *anim = Slide_Animation_Wiper.{};
+        
+        return anim;
+    }
 
-#private_file
-fade_animation_render :: (use anim: ^Slide_Animation_Fade, slideshow: ^Slideshow) {
-    source := ^slideshow.slides[source_slide];    
-    target := ^slideshow.slides[target_slide];
+    init :: (use anim: ^Slide_Animation_Wiper, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
 
-    canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+        t = 0;
+    }
 
-    if t < 0.5 {
+    update :: (use anim: ^Slide_Animation_Wiper) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Wiper, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+
+        x := t * canvas_width;
+        y := 0.0f;
+        w := (1 - t) * canvas_width;
+        h := canvas_height;
+        
+        Canvas.set_scissor(canvas, x, y, w, h);
         slide_render(source);
+        Canvas.clear_scissor(canvas);
 
-        Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
-                         0, 0, 0, t * 2);
-    } else {
+        x = 0;
+        w = canvas_width - w;
+        Canvas.set_scissor(canvas, x, y, w, h);
         slide_render(target);
+        Canvas.clear_scissor(canvas);
 
-        Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
-                         0, 0, 0, (1 - t) * 2);
+        if draw_line do Canvas.fill_rect(canvas, t * canvas_width - 2, 0, 4, canvas_height, 1, 1, 1, 1);
     }
 }
 
