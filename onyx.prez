@@ -1,3 +1,4 @@
+[aspect_ratio 16 9]
 
 [var tbright 236]
 [var bbright 20]
@@ -47,7 +48,7 @@
 ▪ Easy to read
 
 [image onyx_example x 50 y 30 width 35
-    border_color 30 30 30 border_width 1]
+    border_color 30 30 30 border_width 2]
 
 
 # ---------------------------------------------
@@ -81,7 +82,7 @@
 https://webassembly.org/
 
 [image wasm_logo x 65 y 34 width 20
-    border_width 2 border_color 20 20 20]
+    border_width 20 border_color 20 20 20]
 
 
 # ---------------------------------------------

@@ -6,13 +6,18 @@ Canvas :: struct {
     init  :: (id: str) -> Handle #foreign "canvas" "init" ---
     clear :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> Handle #foreign "canvas" "clear" ---
 
-    get_width  :: (handle: Handle) -> u32 #foreign "canvas" "get_width" ---
-    get_height :: (handle: Handle) -> u32 #foreign "canvas" "get_height" ---
+    get_width  :: (handle: Handle) -> u32 #foreign "canvas" "getWidth" ---
+    get_height :: (handle: Handle) -> u32 #foreign "canvas" "getHeight" ---
 
-    set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "set_size" ---
+    set_size :: (handle: Handle, width: u32, height: u32) -> void #foreign "canvas" "setSize" ---
 
     set_font :: (handle: Handle, font_name: str) -> u32 #foreign "canvas" "setFont" ---
     set_color :: (handle: Handle, r: f32, g: f32, b: f32, a := 1.0f) -> void #foreign "canvas" "setColor" ---
+
+    TransformMatrix :: #type [6] f32;
+
+    set_transform :: (handle: Handle, matrix: TransformMatrix) -> void #foreign "canvas" "setTransform" --- 
+    get_transform :: (handle: Handle, out_matrix: TransformMatrix) -> void #foreign "canvas" "getTransform" ---
 
     TextMetrics :: struct {
         width : f32;
@@ -47,18 +52,5 @@ setup_canvas :: () {
     clear(canvas, 0.1, 0.1, 0.1);
 
     set_font(canvas, "bold 72px Arial");
-}
-
-draw_centered_text :: (text: str, y_baseline: f32) {
-    use Canvas
-
-    width, height := cast(f32) get_width(canvas), cast(f32) get_height(canvas);
-
-    font_metrics: TextMetrics;
-    measure_text(canvas, text, ^font_metrics);
-
-    x := (width - font_metrics.width) / 2;
-
-    fill_text(canvas, text, x, y_baseline * height);
 }
 

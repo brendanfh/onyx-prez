@@ -117,10 +117,10 @@ let canvas_import_obj = {
         canvasCtx.fillRect(0, 0, canvasElem.width, canvasElem.height);
     },
 
-    get_width(canvas)  { return canvasElem.width;  },
-    get_height(canvas) { return canvasElem.height; },
+    getWidth(canvas)  { return canvasElem.width;  },
+    getHeight(canvas) { return canvasElem.height; },
 
-    set_size(canvas, width, height) {
+    setSize(canvas, width, height) {
         canvasElem.width = width;
         canvasElem.height = height;
     },
@@ -134,6 +134,31 @@ let canvas_import_obj = {
 
     setColor(canvas, r, g, b, a) {
         canvasCtx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`; 
+    },
+
+    setTransform(canvas, matrix_buf) {
+        let data_view = new DataView(wasm_instance.exports.memory.buffer, matrix_buf, 6 * 4);
+
+        let a = data_view.getFloat32(0, true);
+        let b = data_view.getFloat32(4, true);
+        let c = data_view.getFloat32(8, true);
+        let d = data_view.getFloat32(12, true);
+        let e = data_view.getFloat32(16, true);
+        let f = data_view.getFloat32(20, true);
+
+        canvasCtx.setTransform(a, b, c, d, e, f);
+    },
+
+    getTransform(canvas, matrix_buf) {
+        let transform = canvasCtx.getTransform();
+
+        let data_view = new DataView(wasm_instance.exports.memory.buffer, matrix_buf, 6 * 4);
+        data_view.setFloat32(0,  transform.a, true);
+        data_view.setFloat32(4,  transform.b, true);
+        data_view.setFloat32(8,  transform.c, true);
+        data_view.setFloat32(12, transform.d, true);
+        data_view.setFloat32(16, transform.e, true);
+        data_view.setFloat32(20, transform.f, true);
     },
 
     measureText(canvas, text_ptr, text_len, measure_ptr) {
