@@ -30,6 +30,7 @@ poll_events :: () {
 
             case KeyDown {
                 switch ev.keyboard.keycode {
+                    case 0x20 do slideshow_advance_slide(^the_slideshow, 1);
                     case 0x25 do slideshow_advance_slide(^the_slideshow, -1);
                     case 0x27 do slideshow_advance_slide(^the_slideshow, 1);
                 }

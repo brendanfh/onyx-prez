@@ -1,21 +1,26 @@
 [aspect_ratio 16 9]
 
-[var tbright 236]
-[var bbright 20]
+[var text_r 236]
+[var text_g 236]
+[var text_b 236]
 
-[define_text_style normal color   $tbright $tbright $tbright font_size 40 font_name "Arial" left padding 10]
-[define_text_style title color    $tbright $tbright $tbright font_attr bold font_size 72 font_name "Arial" centered]
-[define_text_style subtitle color $tbright $tbright $tbright font_attr italic font_size 72 font_name "Arial" centered]
-[define_text_style header color   $tbright $tbright $tbright font_attr bold font_size 72 font_name "Arial" left padding 10]
+[var back_r 20]
+[var back_g 20]
+[var back_b 40]
+
+[define_text_style normal color   $text_r $text_g $text_b font_size 40 font_name "Arial" left padding 10]
+[define_text_style title color    $text_r $text_g $text_b font_attr bold font_size 72 font_name "Arial" centered]
+[define_text_style subtitle color $text_r $text_g $text_b font_attr italic font_size 72 font_name "Arial" centered]
+[define_text_style header color   $text_r $text_g $text_b font_attr bold font_size 72 font_name "Arial" left padding 10]
 
 [define_text_style hyperlink color 100 100 255 font_attr italic font_size 40 font_name "Arial" left padding 10]
-[define_text_style code color $tbright $tbright $tbright font_size 40 font_name "monospace" left padding 20]
+[define_text_style code color 255 255 255 font_size 40 font_name "monospace" left padding 20]
 
 [load_image onyx_example "https://brendanfh.com/files/onyx_prez/onyx_example.png"]
 [load_image wasm_logo "https://webassembly.org/css/webassembly.svg"]
 
 # ---------------------------------------------
-[slide] [background $bbright $bbright $bbright]
+[slide] [background $back_r $back_g $back_b]
 [animation fade]
 
 [rect color 40 40 40 x 0 w 100 y 35 h 30]
