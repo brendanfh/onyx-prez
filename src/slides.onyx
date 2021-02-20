@@ -29,7 +29,7 @@ Slide :: struct {
     background   : Color;
     aspect_ratio : f32 = 1;
 
-    animation_generator : (i32, i32) -> ^Slide_Animation;
+    animation: ^Slide_Animation;
 
     items : [] ^Slide_Item;
 }
@@ -142,9 +142,11 @@ slideshow_advance_slide :: (use s: ^Slideshow, count := 1) {
     current_slide = math.clamp(current_slide, 0, slides.count - 1); 
 
     if old_slide != current_slide {
-        if slides[current_slide].animation_generator == null_proc do return;
+        current_animation = slides[old_slide].animation;
 
-        current_animation = slides[current_slide].animation_generator(old_slide, current_slide);
+        if current_animation != null {
+            current_animation->init(old_slide, current_slide);
+        }
     }
 }
 
@@ -186,7 +188,6 @@ slideshow_update_animation :: (use s: ^Slideshow) {
     if current_animation == null do return;
 
     if current_animation->update() {
-        cfree(current_animation);
         current_animation = null;
     }
 }
@@ -194,14 +195,19 @@ slideshow_update_animation :: (use s: ^Slideshow) {
 
 
 
-slide_init :: (use slide: ^Slide, background_color := Color.{0, 0, 0, 1}, item_count := 4, aspect := 1.0f) {
+slide_init :: (use slide: ^Slide,
+               background_color := Color.{0, 0, 0, 1},
+               item_count := 0,
+               aspect := 1.0f) {
+
     background = background_color;
     aspect_ratio = aspect;
-
-    animation_generator = fade_animation_make;
+    animation = null;
 
     if item_count > 0 {
-        items = memory.make_slice(#type ^Slide_Item, item_count);
+        // @GlobalVariable
+        allocator := alloc.arena.make_allocator(^the_slideshow.arena);
+        items = memory.make_slice(#type ^Slide_Item, item_count, allocator=allocator);
         memory.set(items.data, 0, items.count * sizeof ^Slide_Item);
 
     } else {
@@ -356,8 +362,9 @@ aprintf :: (allocator: Allocator, format: str, va: ...) -> str {
 //
 
 Slide_Animation :: struct {
-    render : (anim: ^Slide_Animation, slideshow: ^Slideshow) -> void;
+    init   : (anim: ^Slide_Animation, source: i32, target: i32) -> void;
     update : (anim: ^Slide_Animation) -> bool;
+    render : (anim: ^Slide_Animation, slideshow: ^Slideshow) -> void;
 
     source_slide : i32 = -1;
     target_slide : i32 = -1;
@@ -365,22 +372,29 @@ Slide_Animation :: struct {
 
 Slide_Animation_Swipe :: struct {
     use base := Slide_Animation.{
+        init   = swipe_animation_init,
         update = swipe_animation_update,
         render = swipe_animation_render
     };
 
     t  : f32 = 0;
     dt : f32 = 0.03;
+
+
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Swipe {
+        anim := new(Slide_Animation_Swipe, allocator=allocator);
+        *anim = Slide_Animation_Swipe.{};
+        
+        return anim;
+    }
 }
 
-swipe_animation_make :: (source := -1, target := -1) -> ^Slide_Animation {
-    anim := new(Slide_Animation_Swipe);
-    *anim = Slide_Animation_Swipe.{};
+#private_file
+swipe_animation_init :: (use anim: ^Slide_Animation_Swipe, source := -1, target := -1) {
+    source_slide = source;
+    target_slide = target;
 
-    anim.source_slide = source;
-    anim.target_slide = target;
-
-    return anim;
+    t = 0;
 }
 
 #private_file
@@ -411,22 +425,29 @@ swipe_animation_render :: (use anim: ^Slide_Animation_Swipe, slideshow: ^Slidesh
 
 Slide_Animation_Fade :: struct {
     use base := Slide_Animation.{
+        init   = fade_animation_init,
         update = fade_animation_update,
         render = fade_animation_render
     };
 
     t  : f32 = 0;
     dt : f32 = 0.03;
+
+
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Fade {
+        anim := new(Slide_Animation_Fade, allocator=allocator);
+        *anim = Slide_Animation_Fade.{};
+        
+        return anim;
+    }
 }
 
-fade_animation_make :: (source := -1, target := -1) -> ^Slide_Animation {
-    anim := new(Slide_Animation_Fade);
-    *anim = Slide_Animation_Fade.{};
+#private_file
+fade_animation_init :: (use anim: ^Slide_Animation_Fade, source := -1, target := -1) {
+    source_slide = source;
+    target_slide = target;
 
-    anim.source_slide = source;
-    anim.target_slide = target;
-
-    return anim;
+    t = 0;
 }
 
 #private_file

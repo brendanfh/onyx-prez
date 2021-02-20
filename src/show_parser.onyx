@@ -30,6 +30,11 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
     variables := map.make(str, u32);
     defer map.free(^variables);
 
+    animations := map.make(str, #type (Allocator) -> ^Slide_Animation, default=null_proc, hash_count=2);
+    defer map.free(^animations);
+    map.put(^animations, "swipe", Slide_Animation_Swipe.make);
+    map.put(^animations, "fade",  Slide_Animation_Fade.make);
+
     parse_context := ParseContext.{ ^show_reader, ^variables };
 
     current_slide: ^Slide = null;
@@ -58,7 +63,7 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
                     if current_slide != null {
                         background_color = current_slide.background; 
-                        flush_items(current_slide, ^current_slide_items);
+                        flush_items(current_slide, ^current_slide_items, slideshow);
                     }
 
                     current_slide = slideshow_insert_slide(slideshow);
@@ -137,6 +142,18 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
 
                     map.put(^variables, var_name, var_value);
                 }
+                elseif command_name == "animation" {
+                    anim_name := read_word(^show_reader, numeric_allowed=true);
+
+                    if map.has(^animations, anim_name) {
+                        allocator := alloc.arena.make_allocator(^slideshow.arena);
+                        current_slide.animation = (map.get(^animations, anim_name))(allocator);
+                    } else {
+                        printf("Unknown animation: '%s'\n", anim_name);
+
+                        current_slide.animation = null;
+                    }
+                }
                 else {
                     printf("******** Unknown command: '%s'.\n", command_name);
                 }
@@ -164,12 +181,14 @@ parse_slideshow :: (source: str, slideshow: ^Slideshow) {
         }
     }
 
-    flush_items(current_slide, ^current_slide_items);
+    flush_items(current_slide, ^current_slide_items, slideshow);
 
     printf("Total slide count: %i\n", slideshow.slides.count);
 
-    flush_items :: (slide: ^Slide, items: ^[..] ^Slide_Item) {
-        slide.items = memory.make_slice(#type ^Slide_Item, items.count);
+    flush_items :: (slide: ^Slide, items: ^[..] ^Slide_Item, slideshow: ^Slideshow) {
+        allocator := alloc.arena.make_allocator(^slideshow.arena);
+        slide.items = memory.make_slice(#type ^Slide_Item, items.count, allocator = allocator);
+
         for idx: items.count {
             slide.items[idx] = items.data[idx];
         }

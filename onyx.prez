@@ -16,6 +16,7 @@
 
 # ---------------------------------------------
 [slide] [background $bbright $bbright $bbright]
+[animation fade]
 
 [rect color 40 40 40 x 0 w 100 y 35 h 30]
 [rect color 0   0  0 x 0 w 100 y 40 h 20] 
@@ -32,6 +33,7 @@
 # Introduce what Onyx is, the design goals, the improvements over C, etc.
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -55,6 +57,7 @@
 # BRIEFLY introduce WASM and its capabilities
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -89,6 +92,7 @@ https://webassembly.org/
 # High-level language features and design that make it super cozy to program in.
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -119,6 +123,7 @@ https://webassembly.org/
 # Hello, World!
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -143,6 +148,7 @@ https://webassembly.org/
 #   * Running engine
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -174,6 +180,7 @@ https://webassembly.org/
 # Projects done in Onyx
 
 [slide]
+[animation swipe]
 [rect color 40 40 40 x 8 w 84  y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
