@@ -137,51 +137,62 @@ https://webassembly.org/
 # ---------------------------------------------
 # Hello, World!
 
-[slide]
-[animation wiper]
-[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
-[rect color 0  0  0  x 0 w 100 y 5 h 10]
-[text_style header]
-[y 12] Obligatory 'Hello, World!' in Onyx
-
-[rect color 10 10 10 x 15 y 34 w 70 h 40]
-
-[text_style code]
-[y 40]
- 1  #load "core/std"
- 2
- 3  use package core
- 4
- 5  main :: (args: [] cstr) {
- 6      println("Hello, World!");
- 7  }
+# [slide]
+# [animation wiper]
+# [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+# [rect color 0  0  0  x 0 w 100 y 5 h 10]
+# [text_style header]
+# [y 12] Obligatory 'Hello, World!' in Onyx
+# 
+# [rect color 10 10 10 x 15 y 34 w 70 h 40]
+# 
+# [text_style code]
+# [y 40]
+#  1  #load "core/std"
+#  2
+#  3  use package core
+#  4
+#  5  main :: (args: [] cstr) {
+#  6      println("Hello, World!");
+#  7  }
 
 # ---------------------------------------------
 # Hello, World!
 
+# [slide]
+# [animation fade]
+# [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+# [rect color 0  0  0  x 0 w 100 y 5 h 10]
+# [text_style header]
+# [y 12] Obligatory 'Hello, World!' in Onyx
+# 
+# [rect color 10 10 10 x 15 y 34 w 70 h 40]
+# 
+# [text_style code]
+# [y 40]
+#  1  #load "core/std"
+#  2
+#  3  use package core
+#  4
+#  5  main :: (args: [] cstr) {
+#  6      println("Hello, World!");
+#  7  }
+# 
+#  [text_style normal centered font_attr italic]
+#  [y 80]
+#  Not the simplest 'Hello, World!', but this is not meant to be a simple language.
+#  This is a language that does not 'hold your hand'.
+
+
+# ---------------------------------------------
+# DEMO!!!
+
 [slide]
-[animation fade]
-[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
-[rect color 0  0  0  x 0 w 100 y 5 h 10]
-[text_style header]
-[y 12] Obligatory 'Hello, World!' in Onyx
-
-[rect color 10 10 10 x 15 y 34 w 70 h 40]
-
-[text_style code]
-[y 40]
- 1  #load "core/std"
- 2
- 3  use package core
- 4
- 5  main :: (args: [] cstr) {
- 6      println("Hello, World!");
- 7  }
-
- [text_style normal centered font_attr italic]
- [y 80]
- Not the simplest 'Hello, World!', but this is not meant to be a simple language.
- This is a language that does not 'hold your hand'.
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Language Demo
 
 
 # ---------------------------------------------
@@ -225,6 +236,23 @@ https://webassembly.org/
 ▪ Abstract syntax tree node
 ▪ Metadata about the node (scope, package, etc.)
 ▪ State and type for ordering in the queue
+
+# --------------------------------------------
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Compiler Internals Continued
+
+[text_style normal font_attr italic]
+[y 20] Polymorphic procedure generation
+
+[text_style normal padding 15]
+1. All polymorphic variables are solved with pattern matching, if possible.
+2. A parse tree clone is made.
+3. The clone with entered into the entity queue with the a special scope.
+4. From there, it will be processed line any other procedure.
 
 
 
