@@ -160,7 +160,7 @@ https://webassembly.org/
 # Hello, World!
 
 [slide]
-[animation swipe]
+[animation fade]
 [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
@@ -179,7 +179,9 @@ https://webassembly.org/
  7  }
 
  [text_style normal centered font_attr italic]
- [y 80] Not the simplest 'Hello, World!', but this is not meant to be a simple language.
+ [y 80]
+ Not the simplest 'Hello, World!', but this is not meant to be a simple language.
+ This is a language that does not 'hold your hand'.
 
 
 # ---------------------------------------------
@@ -188,11 +190,21 @@ https://webassembly.org/
 #   * Running engine
 
 [slide]
+[animation fade]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Compiler Internals
+
+
+# ---------------------------------------------
+
+[slide]
 [animation swipe]
 [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
 [rect color 0  0  0  x 0 w 100 y 5 h 10]
 [text_style header]
-[y 12] Compiler Internal Design
+[y 12] Compiler Internals
 
 # Normal symbol tables are not powerful enough so an out
 # of order processing scheme such as a priority queue is
@@ -233,4 +245,4 @@ https://webassembly.org/
 ▪ Efficient WebGL Renderer
 
 [text_style inherit font_attr italic]
-▪ This presentation site
+▪ Presentation software
