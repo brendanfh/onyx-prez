@@ -97,6 +97,7 @@
 [y 80] For more information, you can check out,
 [text_style hyperlink centered]
 https://webassembly.org/
+https://wasi.dev/
 
 [image wasm_logo x 65 y 34 width 20
     border_color $image_border_r $image_border_g $image_border_b
@@ -133,55 +134,6 @@ https://webassembly.org/
 [text_style normal padding 15]
 ▪ Prevent cluttering of global scope.
 ▪ Easily access symbols in a package.
-
-# ---------------------------------------------
-# Hello, World!
-
-# [slide]
-# [animation wiper]
-# [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
-# [rect color 0  0  0  x 0 w 100 y 5 h 10]
-# [text_style header]
-# [y 12] Obligatory 'Hello, World!' in Onyx
-# 
-# [rect color 10 10 10 x 15 y 34 w 70 h 40]
-# 
-# [text_style code]
-# [y 40]
-#  1  #load "core/std"
-#  2
-#  3  use package core
-#  4
-#  5  main :: (args: [] cstr) {
-#  6      println("Hello, World!");
-#  7  }
-
-# ---------------------------------------------
-# Hello, World!
-
-# [slide]
-# [animation fade]
-# [rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
-# [rect color 0  0  0  x 0 w 100 y 5 h 10]
-# [text_style header]
-# [y 12] Obligatory 'Hello, World!' in Onyx
-# 
-# [rect color 10 10 10 x 15 y 34 w 70 h 40]
-# 
-# [text_style code]
-# [y 40]
-#  1  #load "core/std"
-#  2
-#  3  use package core
-#  4
-#  5  main :: (args: [] cstr) {
-#  6      println("Hello, World!");
-#  7  }
-# 
-#  [text_style normal centered font_attr italic]
-#  [y 80]
-#  Not the simplest 'Hello, World!', but this is not meant to be a simple language.
-#  This is a language that does not 'hold your hand'.
 
 
 # ---------------------------------------------
@@ -237,6 +189,14 @@ https://webassembly.org/
 ▪ Metadata about the node (scope, package, etc.)
 ▪ State and type for ordering in the queue
 
+[text_style normal font_attr italic]
+[y 73] State flow of an entity
+
+[rect color $back_r $back_g $back_b x 10 w 80 y 74 h 10]
+[text_style normal font_size 48 centered]
+[y 80]
+Parse → Resolve Symbols → Check Types → Generate Code
+
 # --------------------------------------------
 [slide]
 [animation swipe]
@@ -251,10 +211,20 @@ https://webassembly.org/
 [text_style normal padding 15]
 1. All polymorphic variables are solved with pattern matching, if possible.
 2. A parse tree clone is made.
-3. The clone with entered into the entity queue with the a special scope.
-4. From there, it will be processed line any other procedure.
+3. The clone is entered into the entity queue with a special scope.
+4. From there, it will be processed like any other procedure.
 
 
+[text_style normal font_attr italic padding 37]
+[y 49] Example of pattern matching
+[rect color $back_r $back_g $back_b x 37 y 50 w 32 h 25]
+[text_style code padding 40]
+[y 57] [y_inc 6]
+1. ^[] $T = ^[] ^i32 
+2. [] $T  = [] ^i32  
+3. $T     = ^i32     
+
+[y_inc 5]
 
 # ---------------------------------------------
 # Projects done in Onyx
@@ -266,11 +236,23 @@ https://webassembly.org/
 [text_style header]
 [y 12] What has been made in Onyx
 
-[text_style normal]
-[y 20]
+[text_style normal font_size 56]
+[y 25] [y_inc 10]
 ▪ Advent of Code 2020
 ▪ MNIST Digit Recognizer
 ▪ Efficient WebGL Renderer
 
 [text_style inherit font_attr italic]
 ▪ Presentation software
+
+
+# ---------------------------------------------
+# Questions?
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Any questions?
+
