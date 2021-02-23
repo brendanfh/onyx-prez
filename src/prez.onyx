@@ -1,0 +1,88 @@
+use package core
+use package event as event
+
+// This is an integer, not a boolean, because I was noticing an issue
+// where the slide would redraw, but the screen would still be blank
+// because the window was still resizing. Having it do multiple redraws
+// when needed prevents this issue.
+redraw := 0
+
+poll_events :: () {
+    use event.DomEventKind
+
+    ev: event.Event;
+    while event.poll(^ev) {
+        redraw = 1;
+
+        switch ev.kind {
+            case Resize {
+                use Canvas
+                set_size(canvas, ev.resize.width, ev.resize.height);
+            }
+
+            case MouseDown {
+                use event.MouseButton
+                switch ev.mouse.button {
+                    case Right    do slideshow_advance_slide(^the_slideshow, -1);
+                    case #default do slideshow_advance_slide(^the_slideshow, 1);
+                }
+            }
+
+            case KeyDown {
+                switch ev.keyboard.keycode {
+                    case 0x20 do slideshow_advance_slide(^the_slideshow, 1);
+                    case 0x25 do slideshow_advance_slide(^the_slideshow, -1);
+                    case 0x27 do slideshow_advance_slide(^the_slideshow, 1);
+                }
+            }
+
+            case FileDropped {
+                printf("New slideshow was dropped! %i bytes in size\n", ev.file.file_size);
+
+                source := memory.make_slice(u8, ev.file.file_size);
+                defer cfree(source.data);
+
+                copy_presentation_source :: (source: [] u8) -> void #foreign "event" "copy_presentation_source" ---
+                copy_presentation_source(source);
+
+                slideshow_reset(^the_slideshow);
+                parse_slideshow(source, ^the_slideshow);
+            }
+        }
+    }
+}
+
+loop :: () -> void #export "loop" {
+    poll_events();
+
+    slideshow_update_animation(^the_slideshow);
+
+    if the_slideshow.current_animation != null {
+        identity := f32.[ 1, 0, 0, 1, 0, 0 ];
+        Canvas.set_transform(canvas, identity);
+
+        Canvas.clear(canvas, 0, 0, 0, 1);
+        the_slideshow.current_animation->render(^the_slideshow);
+    }
+    elseif redraw > 0 {
+        Canvas.clear(canvas, 0, 0, 0, 1);
+
+        current_slide := slideshow_get_current_slide(^the_slideshow);
+        slide_render(current_slide);
+
+        redraw -= 1;
+    }
+}
+
+the_slideshow : Slideshow;
+
+main :: (args: [] cstr) {
+    setup_canvas();
+    event.init();
+
+    the_slideshow = slideshow_make();
+    parse_slideshow(#file_contents "initial.prez", ^the_slideshow);
+
+    start_loop :: () -> void #foreign "host" "start_loop" ---
+    start_loop();
+}

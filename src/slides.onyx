@@ -1,0 +1,529 @@
+use package core
+
+HTML_Image :: struct {
+    handle: i32 = -1;
+    width:  i32 = 1; // To avoid dividing by 0
+    height: i32 = 1;
+}
+
+Color :: struct {
+    r, g, b: f32;
+    a: f32 = 1;
+}
+
+Slideshow :: struct {
+    // A basic arena that should store everything related to slides.
+    // This makes it easy to free everything at once.
+    arena : alloc.arena.ArenaState;
+
+    title  : str;
+    slides : [..] Slide;
+
+    current_slide : i32;
+    current_animation : ^Slide_Animation;
+
+    image_map : map.Map(str, HTML_Image);
+}
+
+Slide :: struct {
+    background   : Color;
+    aspect_ratio : f32 = 1;
+
+    animation: ^Slide_Animation;
+
+    items : [] ^Slide_Item;
+}
+
+Slide_Item :: struct #union {
+    Kind :: enum {
+        Undefined;
+        Text;
+        Image;
+        Rect;
+    }
+
+    use base: Slide_Item_Base;
+    text  : Slide_Item_Text;
+    image : Slide_Item_Image; 
+    rect  : Slide_Item_Rect;
+}
+
+Slide_Item_Base :: struct {
+    kind : Slide_Item.Kind;
+}
+
+Slide_Item_Text :: struct {
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Text };
+
+    color := Color.{ 1, 1, 1 };
+
+    font_name : str;
+    font_size : u32;
+    font_attr : FontAttributes = ~~ 0;
+
+    FontAttributes :: enum #flags { Bold; Italic; Underline; }
+
+    text    : str;
+    y_pos   : f32; // Between 0 and 1
+    padding : f32; // Between 0 and 1
+    justify : Justify;
+
+    Justify :: enum { Left; Center; Right; }
+}
+
+Slide_Item_Image :: struct {
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Image };
+
+    name  : str;
+    x, y  : f32; // Between 0 and 1
+    width : f32; // Between 0 and 1
+
+    // Currently the image maintains the original aspect ratio,
+    // so the height of the image is automatically determined.
+
+    border_color : Color;
+    border_width : f32;
+}
+
+Slide_Item_Rect :: struct {
+    use base := Slide_Item_Base.{ Slide_Item.Kind.Rect };
+
+    color : Color;
+
+    x, y : f32; // Between 0 and 1
+    w, h : f32; // Between 0 and 1
+}
+
+
+
+slideshow_make :: (allocator := context.allocator) -> Slideshow {
+    slideshow: Slideshow;
+    slideshow_init(^slideshow, allocator);
+
+    // @Reconsider: By not reseting the current_slide to 0 in the init function,
+    // the current slide can persist over resets. This makes it easier to be
+    // editing a slideshow because you will remain on the same slide, provided
+    // no other slides were added before the slide you're working on.
+    slideshow.current_slide = 0;
+
+    return slideshow;
+}
+
+slideshow_init :: (use s: ^Slideshow, allocator := context.allocator) {
+    title = "Untitled Slideshow";
+
+    arena = alloc.arena.make(allocator, arena_size = 16 * 1024);
+    array.init(^slides, 4);
+
+    map.init(^image_map, default = HTML_Image.{});
+}
+
+slideshow_reset :: (use s: ^Slideshow) {
+    alloc.arena.free(^arena);
+    array.free(^slides);
+
+    map.free(^image_map);
+
+    slideshow_init(s);
+}
+
+slideshow_get_current_slide :: (use s: ^Slideshow) -> ^Slide {
+    current_slide = math.clamp(current_slide, 0, slides.count - 1); 
+
+    return ^slides[current_slide];
+}
+
+slideshow_advance_slide :: (use s: ^Slideshow, count := 1) {
+    if current_animation != null do return;
+
+    old_slide := current_slide;
+    
+    current_slide += count;
+    current_slide = math.clamp(current_slide, 0, slides.count - 1); 
+
+    if old_slide != current_slide {
+        current_animation = slides[old_slide].animation;
+
+        if current_animation != null {
+            current_animation->init(old_slide, current_slide);
+        }
+    }
+}
+
+slideshow_insert_slide :: (use s: ^Slideshow, at := -1) -> ^Slide {
+    // @Robustness: not checking the return values on these calls
+
+    if at > 0 {
+        array.insert_empty(^slides, at);
+        return ^slides[at];
+    }
+
+    array.ensure_capacity(^slides, slides.count + 1);
+    defer slides.count += 1;
+    return ^slides[slides.count];
+}
+
+slideshow_make_item :: (use s: ^Slideshow) -> ^Slide_Item {
+    allocator := alloc.arena.make_allocator(^arena);
+    ret := new(Slide_Item, allocator = allocator);
+    memory.set(ret, 0, sizeof Slide_Item);
+    return ret;
+}
+
+slideshow_load_image :: (use s: ^Slideshow, image_name: str, image_path: str) -> HTML_Image {
+    if map.has(^image_map, image_name) {
+        printf("Warning: the image '%s' was already defined.", image_name);
+        return image_map.default_value;
+    }
+
+    html_image_load :: (path: str, out_image: ^HTML_Image) -> void #foreign "html" "load_image" ---
+    image: HTML_Image;
+    html_image_load(image_path, ^image);
+
+    map.put(^image_map, image_name, image);
+    return image;
+}
+
+slideshow_update_animation :: (use s: ^Slideshow) {
+    if current_animation == null do return;
+
+    if current_animation->update() {
+        current_animation = null;
+    }
+}
+
+
+
+
+slide_init :: (use slide: ^Slide,
+               background_color := Color.{0, 0, 0, 1},
+               item_count := 0,
+               aspect := 1.0f) {
+
+    background = background_color;
+    aspect_ratio = aspect;
+    animation = null;
+
+    if item_count > 0 {
+        // @GlobalVariable
+        allocator := alloc.arena.make_allocator(^the_slideshow.arena);
+        items = memory.make_slice(#type ^Slide_Item, item_count, allocator=allocator);
+        memory.set(items.data, 0, items.count * sizeof ^Slide_Item);
+
+    } else {
+        items.count = 0;
+    }
+}
+
+slide_render :: (use slide: ^Slide) {
+    canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+    width, height := 0.0f, 0.0f;
+    x, y := 0.0f, 0.0f;
+
+    if canvas_width > canvas_height * aspect_ratio {
+        height = canvas_height;    
+        width  = canvas_height * aspect_ratio;
+        x      = (canvas_width - width) / 2;
+        y      = 0;
+    } else {
+        width  = canvas_width;
+        height = canvas_width / aspect_ratio;
+        x      = 0;
+        y      = (canvas_height - height) / 2;
+    }
+
+    old_transform : [6] f32;
+    Canvas.get_transform(canvas, old_transform);
+
+    transform := f32.[ 1, 0, 0, 1,
+                       x + old_transform[4],
+                       y + old_transform[5] ];
+
+    Canvas.set_transform(canvas, transform);
+    defer Canvas.set_transform(canvas, old_transform);
+
+    Canvas.fill_rect(canvas, 0, 0, width, height, background.r, background.g, background.b, background.a);
+    for item: items do if item != null do slide_item_render(item, slide, width, height);
+}
+
+slide_item_render :: (use slide_item: ^Slide_Item, slide: ^Slide, width: f32, height: f32) {
+    use Canvas
+    use Slide_Item.Kind
+
+    switch kind {
+        case Text {
+            set_font_for_text(slide_item);
+            set_color(canvas, text.color.r, text.color.g, text.color.b, text.color.a);
+
+            use Slide_Item_Text.Justify
+            switch text.justify {
+                case Center {
+                    font_metrics: TextMetrics;
+                    measure_text(canvas, text.text, ^font_metrics);
+
+                    x := (width - font_metrics.width) / 2;
+
+                    fill_text(canvas, text.text, x, text.y_pos * height);
+                }
+
+                case Left {
+                    x, y := text.padding * width, text.y_pos * height;
+                    fill_text(canvas, text.text, x, y);
+                }
+
+                case Right {
+                    font_metrics: TextMetrics;
+                    measure_text(canvas, text.text, ^font_metrics);
+
+                    x, y := width - font_metrics.width - text.padding * width, text.y_pos * height;
+                    fill_text(canvas, text.text, x, y);
+                }
+            }
+        }
+
+        case Image {
+            if html_image := map.get(^the_slideshow.image_map, image.name); html_image.handle != -1 {
+                // @Speed: There is a much better way of doing this...
+                // @Robustness: Currently, because HTML images are asynchronously loaded,
+                // the image dimensions are not known when the load_image call is made.
+                // These means that the dimensions need to be queried later once the image
+                // has been loaded. The real bad thing here, is that the 'html_image' being
+                // passed is a local copy from the image_map. This means everytime this image
+                // is drawn, it has to requery the image dimensions... Uck...
+                store_image_size :: (html_image: ^HTML_Image) -> void #foreign "html" "store_image_size" ---
+                store_image_size(^html_image);
+
+                x := image.x * width;
+                y := image.y * height;
+                w := image.width * width;
+                h := w * (cast(f32) html_image.height / cast(f32) html_image.width);
+
+                if image.border_width > 0 {
+                    bw := image.border_width * w;
+                    fill_rect(canvas, x - bw, y - bw, w + 2 * bw, h + 2 * bw,
+                                      image.border_color.r, image.border_color.g,
+                                      image.border_color.b, image.border_color.a);
+                }
+                
+                draw_image(canvas, html_image.handle, x, y, w, h);
+            }
+        }
+
+        case Rect {
+            x := rect.x * width;
+            y := rect.y * height;
+            w := rect.w * width;
+            h := rect.h * height;
+
+            fill_rect(canvas, x, y, w, h, rect.color.r, rect.color.g, rect.color.b, rect.color.a);
+        }
+    }
+
+
+    set_font_for_text :: (use slide_item: ^Slide_Item) {
+        use Slide_Item_Text.FontAttributes
+        use Canvas
+
+        bold_str := "";
+        italic_str := "";
+        underline_str := "";
+
+        if text.font_attr & Bold      != ~~ 0 do bold_str = "bold";
+        if text.font_attr & Italic    != ~~ 0 do italic_str = "italic";
+        if text.font_attr & Underline != ~~ 0 do underline_str = "underline";
+        
+        formatted_name := aprintf(
+            context.allocator,
+            "%s %s %s %ipx %s",
+            bold_str, italic_str, underline_str,
+            text.font_size, text.font_name);
+        defer cfree(formatted_name.data);
+
+        set_font(canvas, formatted_name);
+    }
+}
+
+// @Cleanup: this should be part of the standard library.
+aprintf :: (allocator: Allocator, format: str, va: ...) -> str {
+    // @Robustness: Same potential overflow bug.
+    buffer: [2048] u8;  
+    formatted := conv.str_format_va(format, ~~buffer, va);
+
+    output := string.alloc_copy(formatted, allocator = allocator);
+    return output;
+}
+
+
+
+
+
+//
+// Slide Animations
+//
+
+Slide_Animation :: struct {
+    init   : (anim: ^Slide_Animation, source: i32, target: i32) -> void;
+    update : (anim: ^Slide_Animation) -> bool;
+    render : (anim: ^Slide_Animation, slideshow: ^Slideshow) -> void;
+
+    source_slide : i32 = -1;
+    target_slide : i32 = -1;
+}
+
+Slide_Animation_Swipe :: struct {
+    use base := Slide_Animation.{
+        init   = init,
+        update = update,
+        render = render
+    };
+
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+
+
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Swipe {
+        anim := new(Slide_Animation_Swipe, allocator=allocator);
+        *anim = Slide_Animation_Swipe.{};
+        
+        return anim;
+    }
+
+    init :: (use anim: ^Slide_Animation_Swipe, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
+
+        t = 0;
+    }
+
+    update :: (use anim: ^Slide_Animation_Swipe) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Swipe, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width := cast(f32) Canvas.get_width(canvas);
+
+        multiplier := -1.0f;
+        if target_slide < source_slide do multiplier = 1;
+
+        offset := (1 - math.pow(1 - t, 3)) * canvas_width * multiplier;
+        trans := f32.[ 1, 0, 0, 1, offset, 0 ];
+        Canvas.set_transform(canvas, trans);
+        slide_render(source);
+
+        trans[4] -= canvas_width * multiplier;
+        Canvas.set_transform(canvas, trans);
+        slide_render(target);
+    }
+}
+
+
+Slide_Animation_Fade :: struct {
+    use base := Slide_Animation.{
+        init   = init,
+        update = update,
+        render = render
+    };
+
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+
+
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Fade {
+        anim := new(Slide_Animation_Fade, allocator=allocator);
+        *anim = Slide_Animation_Fade.{};
+        
+        return anim;
+    }
+
+    init :: (use anim: ^Slide_Animation_Fade, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
+
+        t = 0;
+    }
+
+    update :: (use anim: ^Slide_Animation_Fade) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Fade, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+
+        if t < 0.5 {
+            slide_render(source);
+
+            Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                             0, 0, 0, t * 2);
+        } else {
+            slide_render(target);
+
+            Canvas.fill_rect(canvas, 0, 0, canvas_width, canvas_height,
+                             0, 0, 0, (1 - t) * 2);
+        }
+    }
+}
+
+Slide_Animation_Wiper :: struct {
+    use base := Slide_Animation.{
+        init   = init,
+        update = update,
+        render = render
+    };
+
+    t  : f32 = 0;
+    dt : f32 = 0.03;
+    
+    draw_line := false;
+
+    make :: (allocator := context.allocator) -> ^Slide_Animation_Wiper {
+        anim := new(Slide_Animation_Wiper, allocator=allocator);
+        *anim = Slide_Animation_Wiper.{};
+        
+        return anim;
+    }
+
+    init :: (use anim: ^Slide_Animation_Wiper, source := -1, target := -1) {
+        source_slide = source;
+        target_slide = target;
+
+        t = 0;
+    }
+
+    update :: (use anim: ^Slide_Animation_Wiper) -> bool {
+        t += dt;
+        return t >= 1;
+    }
+
+    render :: (use anim: ^Slide_Animation_Wiper, slideshow: ^Slideshow) {
+        source := ^slideshow.slides[source_slide];    
+        target := ^slideshow.slides[target_slide];
+
+        canvas_width, canvas_height := cast(f32) Canvas.get_width(canvas), cast(f32) Canvas.get_height(canvas);
+
+        x := t * canvas_width;
+        y := 0.0f;
+        w := (1 - t) * canvas_width;
+        h := canvas_height;
+        
+        Canvas.set_scissor(canvas, x, y, w, h);
+        slide_render(source);
+        Canvas.clear_scissor(canvas);
+
+        x = 0;
+        w = canvas_width - w;
+        Canvas.set_scissor(canvas, x, y, w, h);
+        slide_render(target);
+        Canvas.clear_scissor(canvas);
+
+        if draw_line do Canvas.fill_rect(canvas, t * canvas_width - 2, 0, 4, canvas_height, 1, 1, 1, 1);
+    }
+}
+

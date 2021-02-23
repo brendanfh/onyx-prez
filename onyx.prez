@@ -1,0 +1,266 @@
+[aspect_ratio 16 9]
+
+[var text_r 236]
+[var text_g 236]
+[var text_b 236]
+
+[var back_r 20]
+[var back_g 20]
+[var back_b 30]
+
+[var cover_r 30]
+[var cover_g 30]
+[var cover_b 40]
+
+[var image_border_r 20]
+[var image_border_g 20]
+[var image_border_b 30]
+
+[define_text_style normal color   $text_r $text_g $text_b font_size 40 font_name "Arial" left padding 10]
+[define_text_style title color    $text_r $text_g $text_b font_attr bold font_size 72 font_name "Arial" centered]
+[define_text_style subtitle color $text_r $text_g $text_b font_attr italic font_size 72 font_name "Arial" centered]
+[define_text_style header color   $text_r $text_g $text_b font_attr bold font_size 72 font_name "Arial" left padding 10]
+
+[define_text_style hyperlink color 100 100 255 font_attr italic font_size 40 font_name "Arial" left padding 10]
+[define_text_style code color 255 255 255 font_size 40 font_name "monospace" left padding 20]
+
+[load_image onyx_example "https://brendanfh.com/files/onyx_prez/onyx_example.png"]
+[load_image wasm_logo "https://webassembly.org/css/webassembly.svg"]
+
+# ---------------------------------------------
+[slide] [background $back_r $back_g $back_b]
+[animation fade]
+
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+
+[text_style title font_size 96]
+[y 50] Onyx
+
+[text_style normal font_attr italic font_size 36 centered]
+[y 56] A simple, yet powerful programming language for WebAssembly.
+
+
+
+# ---------------------------------------------
+# Introduce what Onyx is, the design goals, the improvements over C, etc.
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] What is Onyx?
+
+[text_style normal]
+[y 22] New programming language for WebAssembly designed and developed by me.
+
+[y 34] Some important design features:
+[text_style inherit padding 15]
+▪ Strongly typed
+▪ Fast compilation
+▪ Easy to write
+▪ Easy to read
+
+[image onyx_example x 50 y 30 width 35
+    border_color $image_border_r $image_border_g $image_border_b
+    border_width 2]
+
+
+# ---------------------------------------------
+# BRIEFLY introduce WASM and its capabilities
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Brief aside of WebAssembly
+
+[text_style normal]
+[y 20] WebAssembly (WASM) is a new execution platform for the web.
+
+[y 30] It defines:
+[text_style inherit padding 15]
+▪ Virtual Instruction Set Architecture
+▪ Linear Memory Model
+▪ Safe indirect function calls
+▪ Arbitrary imports
+
+[text_style normal]
+[y 60] Multiple embeddings:
+[text_style inherit padding 15]
+▪ Web browsers
+▪ WebAssembly Systems Interface (WASI)
+
+[text_style normal centered]
+[y 80] For more information, you can check out,
+[text_style hyperlink centered]
+https://webassembly.org/
+https://wasi.dev/
+
+[image wasm_logo x 65 y 34 width 20
+    border_color $image_border_r $image_border_g $image_border_b
+    border_width 10]
+
+
+# ---------------------------------------------
+# High-level language features and design that make it super cozy to program in.
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] High Level Design
+
+[text_style normal]
+[y 20] Started vaguely at C, because C did many things right.
+
+[text_style normal font_attr italic font_size 44]
+[y 30] Declare anywhere
+[text_style normal padding 15]
+▪ Declaration order of global symbols does not affect compilation.
+▪ Removes clunky function prototypes in C.
+
+[text_style normal font_attr italic font_size 44]
+[y 50] Polymorphic procedures and structures
+[text_style normal padding 15]
+▪ Making procedures polymorphic is as easy as possible.
+▪ Polymorphic procedures are not 'special'.
+
+[text_style normal font_attr italic font_size 44]
+[y 70] Package system
+[text_style normal padding 15]
+▪ Prevent cluttering of global scope.
+▪ Easily access symbols in a package.
+
+
+# ---------------------------------------------
+# DEMO!!!
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Language Demo
+
+
+# ---------------------------------------------
+# Compiler internals
+#   * Entity priority queue
+#   * Running engine
+
+[slide]
+[animation fade]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Compiler Internals
+
+
+# ---------------------------------------------
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Compiler Internals
+
+# Normal symbol tables are not powerful enough so an out
+# of order processing scheme such as a priority queue is
+# needed
+
+[text_style normal font_attr italic]
+[y 20] Compilation engine
+
+[text_style normal padding 15]
+1. The parser generates a set of entities for a file.
+2. These entities are added to a priority queue.
+3. Entities are processed one-by-one until compilation completes or fails.
+
+[text_style normal font_attr italic]
+[y 45] Entity
+
+[text_style normal padding 15]
+▪ Abstract syntax tree node
+▪ Metadata about the node (scope, package, etc.)
+▪ State and type for ordering in the queue
+
+[text_style normal font_attr italic]
+[y 73] State flow of an entity
+
+[rect color $back_r $back_g $back_b x 10 w 80 y 74 h 10]
+[text_style normal font_size 48 centered]
+[y 80]
+Parse → Resolve Symbols → Check Types → Generate Code
+
+# --------------------------------------------
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] Compiler Internals Continued
+
+[text_style normal font_attr italic]
+[y 20] Polymorphic procedure generation
+
+[text_style normal padding 15]
+1. All polymorphic variables are solved with pattern matching, if possible.
+2. A parse tree clone is made.
+3. The clone is entered into the entity queue with a special scope.
+4. From there, it will be processed like any other procedure.
+
+
+[text_style normal font_attr italic padding 37]
+[y 49] Example of pattern matching
+[rect color $back_r $back_g $back_b x 37 y 50 w 32 h 25]
+[text_style code padding 40]
+[y 57] [y_inc 6]
+1. ^[] $T = ^[] ^i32 
+2. [] $T  = [] ^i32  
+3. $T     = ^i32     
+
+[y_inc 5]
+
+# ---------------------------------------------
+# Projects done in Onyx
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 8 w 84 y 5 h 95]
+[rect color 0  0  0  x 0 w 100 y 5 h 10]
+[text_style header]
+[y 12] What has been made in Onyx
+
+[text_style normal font_size 56]
+[y 25] [y_inc 15]
+▪ Advent of Code 2020
+▪ MNIST Digit Recognizer
+▪ Efficient WebGL Renderer
+
+[text_style inherit font_attr italic]
+▪ Presentation software
+
+[text_style hyperlink padding 15]
+[y 30] [y_inc 15]
+https://github.com/brendanfh/onyx-aoc
+https://github.com/brendanfh/onyx-nn
+[text_style normal padding 15 font_attr italic]
+No relevant source control link.
+[text_style hyperlink padding 15]
+https://github.com/brendanfh/onyx-prez
+
+# ---------------------------------------------
+# Questions?
+
+[slide]
+[animation swipe]
+[rect color $cover_r $cover_g $cover_b x 0 w 100 y 35 h 30]
+[rect color 0        0        0        x 0 w 100 y 40 h 20] 
+[text_style title font_size 96]
+[y 53] Any questions?
+

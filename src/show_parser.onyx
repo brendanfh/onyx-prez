@@ -1,0 +1,367 @@
+use package core
+
+ParseContext :: struct {
+    reader: ^io.Reader;
+    variables: ^map.Map(str, u32);
+}
+
+parse_slideshow :: (source: str, slideshow: ^Slideshow) {
+    use io
+
+    parse_arena := alloc.arena.make(context.allocator, arena_size = 16 * 1024);
+    defer alloc.arena.free(^parse_arena);
+
+    parse_alloc := alloc.arena.make_allocator(^parse_arena);
+
+    show_stream := string_stream_make(source);
+    show_reader := reader_make(^show_stream);
+
+    default_text_style := Slide_Item_Text.{
+        font_name = "Calibri",
+        font_size = 12,
+        text = "UNDEFINED TEXT",
+        y_pos = 0, padding = 0, justify = Slide_Item_Text.Justify.Left,
+    };
+
+    text_styles := map.make(str, Slide_Item_Text, default_text_style);
+    defer map.free(^text_styles);
+    map.put(^text_styles, "inherit", default_text_style);
+
+    variables := map.make(str, u32);
+    defer map.free(^variables);
+
+    animations := map.make(str, #type (Allocator) -> ^Slide_Animation, default=null_proc, hash_count=4);
+    defer map.free(^animations);
+    map.put(^animations, "swipe", Slide_Animation_Swipe.make);
+    map.put(^animations, "fade",  Slide_Animation_Fade.make);
+    map.put(^animations, "wiper", Slide_Animation_Wiper.make);
+
+    parse_context := ParseContext.{ ^show_reader, ^variables };
+
+    current_slide: ^Slide = null;
+    current_text_style: Slide_Item_Text;
+
+    current_slide_items := array.make(#type ^Slide_Item, 8);
+    defer array.free(^current_slide_items);
+
+    aspect_ratio := 1.0f;
+    y_increment := 0.05f;
+
+    while !stream_end_of_file(^show_stream) {
+        skip_whitespace(^show_reader); 
+        defer skip_whitespace(^show_reader); 
+
+        _, next_byte := stream_peek_byte(^show_stream);
+        switch next_byte {
+            case #char "[" {
+                // Command
+                read_byte(^show_reader);
+
+                command_name := read_word(^show_reader, allocator=parse_alloc);
+
+                if command_name == "slide" {
+                    background_color := Color.{ 0, 0, 0 };
+
+                    if current_slide != null {
+                        background_color = current_slide.background; 
+                        flush_items(current_slide, ^current_slide_items, slideshow);
+                    }
+
+                    current_slide = slideshow_insert_slide(slideshow);
+
+                    // @NOTE: item_count is 0 because the items will be allocated and inserted later
+                    slide_init(current_slide,
+                        item_count = 0,
+                        background_color = background_color,
+                        aspect = aspect_ratio);
+                }
+                elseif command_name == "background" {
+                    r, g, b := parse_color(^parse_context);
+                    current_slide.background = Color.{ r, g, b };
+                }
+                elseif command_name == "y" {
+                    y := parse_numeric_value(^parse_context);
+                    current_text_style.y_pos = cast(f32) y / 100;
+                }
+                elseif command_name == "y_inc" {
+                    y := parse_numeric_value(^parse_context);
+                    y_increment = cast(f32) y / 100;
+                }
+                elseif command_name == "aspect_ratio" {
+                    w := parse_numeric_value(^parse_context);
+                    h := parse_numeric_value(^parse_context);
+
+                    aspect_ratio = cast(f32) w / cast(f32) h;
+                }
+                elseif command_name == "text_style" {
+                    text_style_name := read_word(^show_reader, numeric_allowed=true);
+                    if !map.has(^text_styles, text_style_name) {
+                        printf("Text style '%s' was never defined.\n", text_style_name);
+                    }
+
+                    text_style := map.get(^text_styles, text_style_name);
+                    
+                    old_y := current_text_style.y_pos;
+                    current_text_style = text_style;
+                    current_text_style.y_pos = old_y;
+
+                    parse_text_style(^parse_context, ^current_text_style, parse_alloc);
+
+                    // So 'inherit' can be used to copy all existing text styling.
+                    map.put(^text_styles, "inherit", current_text_style);
+                }
+                elseif command_name == "define_text_style" {
+                    text_style_name := read_word(^show_reader, numeric_allowed=true);
+
+                    current_text_style = default_text_style;
+                    parse_text_style(^parse_context, ^current_text_style, parse_alloc);
+                    map.put(^text_styles, text_style_name, current_text_style);
+                }
+                elseif command_name == "load_image" {
+                    image_name := read_word(^show_reader, numeric_allowed=true);
+                    image_path := parse_string(^parse_context, allocator=parse_alloc);
+
+                    slideshow_load_image(slideshow, image_name, image_path);
+                }
+                elseif command_name == "image" {
+                    new_slide_image := slideshow_make_item(slideshow);
+                    new_slide_image.kind = Slide_Item.Kind.Image;
+                    parse_image_style(^parse_context, ^new_slide_image.image, parse_alloc);
+
+                    array.push(^current_slide_items, new_slide_image);
+                }
+                elseif command_name == "rect" {
+                    new_slide_rect := slideshow_make_item(slideshow);
+                    new_slide_rect.kind = Slide_Item.Kind.Rect;
+                    parse_rect_style(^parse_context, ^new_slide_rect.rect, parse_alloc);
+
+                    array.push(^current_slide_items, new_slide_rect);
+                }
+                elseif command_name == "var" {
+                    var_name := read_word(^show_reader, numeric_allowed=true);
+                    var_value := read_u32(^show_reader);
+
+                    map.put(^variables, var_name, var_value);
+                }
+                elseif command_name == "animation" {
+                    anim_name := read_word(^show_reader, numeric_allowed=true);
+
+                    if map.has(^animations, anim_name) {
+                        allocator := alloc.arena.make_allocator(^slideshow.arena);
+                        current_slide.animation = (map.get(^animations, anim_name))(allocator);
+                    } else {
+                        printf("Unknown animation: '%s'\n", anim_name);
+
+                        current_slide.animation = null;
+                    }
+                }
+                else {
+                    printf("******** Unknown command: '%s'.\n", command_name);
+                }
+                
+                read_until(^show_reader, #char "]", allocator=parse_alloc, consume_end=true);
+            }
+
+            // @Memory: should be able to use advance_line here instead, but
+            // there are some issue with that consuming two lines instead.
+            case #char "#" do read_line(^show_reader, allocator=parse_alloc);
+
+            case #default {
+                // @Memory
+                text_allocator := alloc.arena.make_allocator(^slideshow.arena);
+                text := read_line(^show_reader, text_allocator);
+
+                new_slide_text := slideshow_make_item(slideshow);
+                new_slide_text.text = current_text_style;
+                new_slide_text.text.text = text; // Oofta...
+
+                array.push(^current_slide_items, new_slide_text);
+
+                current_text_style.y_pos += y_increment;
+            }
+        }
+    }
+
+    flush_items(current_slide, ^current_slide_items, slideshow);
+
+    printf("Total slide count: %i\n", slideshow.slides.count);
+
+    flush_items :: (slide: ^Slide, items: ^[..] ^Slide_Item, slideshow: ^Slideshow) {
+        allocator := alloc.arena.make_allocator(^slideshow.arena);
+        slide.items = memory.make_slice(#type ^Slide_Item, items.count, allocator = allocator);
+
+        for idx: items.count {
+            slide.items[idx] = items.data[idx];
+        }
+
+        array.clear(items);
+    }
+}
+
+#private_file
+parse_text_style :: (use pc: ^ParseContext, text_style: ^Slide_Item_Text, parse_alloc := context.allocator) {
+    use io
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "color" {
+            r, g, b := parse_color(pc);
+            text_style.color = Color.{ r, g, b };
+        }
+        elseif style_name == "font_size" {
+            text_style.font_size = parse_numeric_value(pc);
+        }
+        elseif style_name == "font_name" {
+            text_style.font_name = parse_string(pc);
+        }
+        elseif style_name == "font_attr" {
+            font_attr := read_word(reader, allocator=parse_alloc);
+
+            if     font_attr == "bold"   do text_style.font_attr |= Slide_Item_Text.FontAttributes.Bold;
+            elseif font_attr == "italic" do text_style.font_attr |= Slide_Item_Text.FontAttributes.Italic;
+        }
+        elseif style_name == "padding" {
+            padding := parse_numeric_value(pc);
+            text_style.padding = cast(f32) padding / 100;
+        }
+        elseif style_name == "left"     do text_style.justify = Slide_Item_Text.Justify.Left;
+        elseif style_name == "centered" do text_style.justify = Slide_Item_Text.Justify.Center;
+        elseif style_name == "right"    do text_style.justify = Slide_Item_Text.Justify.Right;
+        else {
+            printf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_image_style :: (use pc: ^ParseContext, image_style: ^Slide_Item_Image, parse_alloc := context.allocator) {
+    use io
+
+    image_name := read_word(reader, numeric_allowed=true);
+    image_style.name = image_name;
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "x" {
+            x := parse_numeric_value(pc);
+            image_style.x = cast(f32) x / 100;
+        }
+        elseif style_name == "y" {
+            y := parse_numeric_value(pc);
+            image_style.y = cast(f32) y / 100;
+        }
+        elseif style_name == "width" {
+            width := parse_numeric_value(pc);
+            image_style.width = cast(f32) width / 100;
+        }
+        elseif style_name == "border_width" {
+            width := parse_numeric_value(pc);
+            image_style.border_width = cast(f32) width / 100;
+        }
+        elseif style_name == "border_color" {
+            r, g, b := parse_color(pc);
+            image_style.border_color = Color.{ r, g, b };
+        }
+        else {
+            printf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_rect_style :: (use pc: ^ParseContext, rect_style: ^Slide_Item_Rect, parse_alloc := context.allocator) {
+    use io
+
+    while !stream_end_of_file(reader.stream) && peek_byte(reader) != #char "]" {
+        skip_whitespace(reader);
+        defer skip_whitespace(reader);
+        style_name := read_word(reader, allocator=parse_alloc);
+        
+        if style_name == "x" {
+            x := parse_numeric_value(pc);
+            rect_style.x = cast(f32) x / 100;
+        }
+        elseif style_name == "y" {
+            y := parse_numeric_value(pc);
+            rect_style.y = cast(f32) y / 100;
+        }
+        elseif style_name == "w" {
+            w := parse_numeric_value(pc);
+            rect_style.w = cast(f32) w / 100;
+        }
+        elseif style_name == "h" {
+            h := parse_numeric_value(pc);
+            rect_style.h = cast(f32) h / 100;
+        }
+        elseif style_name == "color" {
+            r, g, b := parse_color(pc);
+            rect_style.color = Color.{ r, g, b };
+        }
+        else {
+            printf("Unknown style option: '%s'\n", style_name);
+            advance_line(reader);
+            break;
+        }
+    }
+}
+
+#private_file
+parse_numeric_value :: (use pc: ^ParseContext) -> u32 {
+    use io
+
+    skip_whitespace(reader);
+    _, next_byte := stream_peek_byte(reader.stream);
+    if next_byte == #char "$" {
+        io.read_byte(reader);
+        var_name := read_word(reader, numeric_allowed=true);
+
+        value := 0;
+
+        if map.has(variables, var_name) {
+            value = map.get(variables, var_name);
+        } else {
+            printf("Variable '%s' was never defined!\n", var_name);
+        }
+
+        return value;
+    }
+
+    return read_u32(reader);
+}
+
+#private_file
+parse_color :: (use pc: ^ParseContext) -> (f32, f32, f32) {
+    r := parse_numeric_value(pc);
+    g := parse_numeric_value(pc);
+    b := parse_numeric_value(pc);
+
+    fr := cast(f32) r / 255;
+    fg := cast(f32) g / 255;
+    fb := cast(f32) b / 255;
+
+    return fr, fg, fb;
+}
+
+#private_file
+parse_string :: (use pc: ^ParseContext, allocator := context.allocator) -> str {
+    use io
+
+    // @Cleanup
+    dummy := read_until(reader, #char "\"", context.temp_allocator);
+    read_byte(reader);
+
+    str_contents := read_until(reader, #char "\"", allocator=allocator);
+    read_byte(reader);
+
+    return str_contents;
+}
