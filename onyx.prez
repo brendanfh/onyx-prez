@@ -237,7 +237,7 @@ Parse → Resolve Symbols → Check Types → Generate Code
 [y 12] What has been made in Onyx
 
 [text_style normal font_size 56]
-[y 25] [y_inc 10]
+[y 25] [y_inc 15]
 ▪ Advent of Code 2020
 ▪ MNIST Digit Recognizer
 ▪ Efficient WebGL Renderer
@@ -245,6 +245,14 @@ Parse → Resolve Symbols → Check Types → Generate Code
 [text_style inherit font_attr italic]
 ▪ Presentation software
 
+[text_style hyperlink padding 15]
+[y 30] [y_inc 15]
+https://github.com/brendanfh/onyx-aoc
+https://github.com/brendanfh/onyx-nn
+[text_style normal padding 15 font_attr italic]
+No relevant source control link.
+[text_style hyperlink padding 15]
+https://github.com/brendanfh/onyx-prez
 
 # ---------------------------------------------
 # Questions?
